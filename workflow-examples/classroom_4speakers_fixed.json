@@ -1,0 +1,317 @@
+{
+  "last_node_id": 12,
+  "last_link_id": 16,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadAudio",
+      "pos": [100, 100],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [1], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["teacher_voice.wav"],
+      "title": "🎓 Teacher音频"
+    },
+    {
+      "id": 2,
+      "type": "LoadAudio",
+      "pos": [100, 200],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [2], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["student1_voice.wav"],
+      "title": "👨‍🎓 Student1音频"
+    },
+    {
+      "id": 3,
+      "type": "LoadAudio",
+      "pos": [100, 300],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [3], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["student2_voice.wav"],
+      "title": "👩‍🎓 Student2音频"
+    },
+    {
+      "id": 4,
+      "type": "LoadAudio",
+      "pos": [100, 400],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [4], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["student3_voice.wav"],
+      "title": "👨‍🎓 Student3音频"
+    },
+    {
+      "id": 5,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 50],
+      "size": {"0": 350, "1": 380},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [5], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Teacher",
+        "emotion_vector",
+        "",
+        1.0,
+        0.3,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7,
+        "",
+        true
+      ],
+      "title": "🎓 Teacher情感 (权威、专业)"
+    },
+    {
+      "id": 6,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 450],
+      "size": {"0": 350, "1": 380},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [6], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Student1",
+        "emotion_vector",
+        "",
+        1.0,
+        0.6,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4,
+        "",
+        true
+      ],
+      "title": "👨‍🎓 Student1情感 (好奇、积极)"
+    },
+    {
+      "id": 7,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [900, 50],
+      "size": {"0": 350, "1": 380},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [7], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Student2",
+        "emotion_vector",
+        "",
+        1.0,
+        0.5,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        "",
+        true
+      ],
+      "title": "👩‍🎓 Student2情感 (困惑、思考)"
+    },
+    {
+      "id": 8,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [900, 450],
+      "size": {"0": 350, "1": 380},
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [8], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Student3",
+        "emotion_vector",
+        "",
+        1.0,
+        0.4,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.6,
+        "",
+        true
+      ],
+      "title": "👨‍🎓 Student3情感 (哲学、深思)"
+    },
+    {
+      "id": 9,
+      "type": "IndexTTS2_MultiTalk",
+      "pos": [1350, 200],
+      "size": {"0": 500, "1": 400},
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "speaker1_audio", "type": "AUDIO", "link": 1},
+        {"name": "speaker2_audio", "type": "AUDIO", "link": 2},
+        {"name": "speaker3_audio", "type": "AUDIO", "link": 3},
+        {"name": "speaker4_audio", "type": "AUDIO", "link": 4},
+        {"name": "speaker1_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 5},
+        {"name": "speaker2_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 6},
+        {"name": "speaker3_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 7},
+        {"name": "speaker4_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 8}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [9], "shape": 3},
+        {"name": "output_path", "type": "STRING", "links": [], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [10], "shape": 3},
+        {"name": "emotion_analysis", "type": "STRING", "links": [11], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_MultiTalk"},
+      "widgets_values": [
+        "4",
+        "Teacher: Today we're going to learn about quantum physics. Who can tell me what they know?\nStudent1: Oh! I know this! Quantum particles can be in multiple states at once!\nStudent2: Um... I'm not sure I understand. This sounds really complicated.\nStudent3: Wait, what? How can something be in multiple states? That doesn't make sense.\nTeacher: Great questions! Let me explain it step by step.\nStudent1: This is so fascinating! I love learning about this stuff!\nStudent2: I'm trying to follow, but I'm getting more confused...\nStudent3: So... are you saying reality isn't what we think it is?",
+        "classroom_discussion.wav",
+        "auto",
+        1.0,
+        0.8,
+        0.7,
+        0.9,
+        false,
+        false,
+        true
+      ],
+      "title": "🏫 课堂讨论 - 4人对话"
+    },
+    {
+      "id": 10,
+      "type": "PreviewAudio",
+      "pos": [1950, 150],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {"name": "audio", "type": "AUDIO", "link": 9}
+      ],
+      "properties": {"Node name for S&R": "PreviewAudio"},
+      "title": "🔊 播放课堂讨论"
+    },
+    {
+      "id": 11,
+      "type": "ShowText|pysssss",
+      "pos": [1950, 250],
+      "size": {"0": 400, "1": 150},
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 10}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "ℹ️ 合成信息"
+    },
+    {
+      "id": 12,
+      "type": "ShowText|pysssss",
+      "pos": [1950, 450],
+      "size": {"0": 400, "1": 150},
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 11}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "🎭 情感分析"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 9, 0, "AUDIO"],
+    [2, 2, 0, 9, 1, "AUDIO"],
+    [3, 3, 0, 9, 2, "AUDIO"],
+    [4, 4, 0, 9, 3, "AUDIO"],
+    [5, 5, 0, 9, 4, "SPEAKER_EMOTION_CONFIG"],
+    [6, 6, 0, 9, 5, "SPEAKER_EMOTION_CONFIG"],
+    [7, 7, 0, 9, 6, "SPEAKER_EMOTION_CONFIG"],
+    [8, 8, 0, 9, 7, "SPEAKER_EMOTION_CONFIG"],
+    [9, 9, 0, 10, 0, "AUDIO"],
+    [10, 9, 2, 11, 0, "STRING"],
+    [11, 9, 3, 12, 0, "STRING"]
+  ],
+  "groups": [
+    {
+      "title": "🎵 音频文件 (4个说话人)",
+      "bounding": [50, 50, 400, 450],
+      "color": "#3f789e"
+    },
+    {
+      "title": "🎭 情感配置 (每个说话人)",
+      "bounding": [450, 0, 850, 900],
+      "color": "#a1309b"
+    },
+    {
+      "title": "🏫 课堂对话合成",
+      "bounding": [1300, 50, 600, 600],
+      "color": "#b58b2a"
+    },
+    {
+      "title": "🔊 结果播放和分析",
+      "bounding": [1900, 50, 500, 600],
+      "color": "#88a96e"
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.8,
+      "offset": [0, 0]
+    }
+  },
+  "version": 0.4
+}

@@ -1,0 +1,201 @@
+{
+  "last_node_id": 8,
+  "last_link_id": 10,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadAudio",
+      "pos": [100, 150],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [1], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["speaker1_voice.wav"],
+      "title": "📁 第1步：加载Speaker1音频"
+    },
+    {
+      "id": 2,
+      "type": "LoadAudio",
+      "pos": [100, 250],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [2], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["speaker2_voice.wav"],
+      "title": "📁 第1步：加载Speaker2音频"
+    },
+    {
+      "id": 3,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 100],
+      "size": {"0": 350, "1": 380},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [3], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Speaker1",
+        "emotion_vector",
+        "",
+        1.0,
+        0.7,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.3,
+        "",
+        true
+      ],
+      "title": "😊 第2步：Speaker1情感 (快乐)"
+    },
+    {
+      "id": 4,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 520],
+      "size": {"0": 350, "1": 380},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [4], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Speaker2",
+        "emotion_vector",
+        "",
+        1.0,
+        0.5,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        "",
+        true
+      ],
+      "title": "😌 第2步：Speaker2情感 (友好)"
+    },
+    {
+      "id": 5,
+      "type": "IndexTTS2_MultiTalk",
+      "pos": [950, 200],
+      "size": {"0": 500, "1": 350},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {"name": "speaker1_audio", "type": "AUDIO", "link": 1},
+        {"name": "speaker2_audio", "type": "AUDIO", "link": 2},
+        {"name": "speaker1_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 3},
+        {"name": "speaker2_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 4}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [5], "shape": 3},
+        {"name": "output_path", "type": "STRING", "links": [], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [6], "shape": 3},
+        {"name": "emotion_analysis", "type": "STRING", "links": [], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_MultiTalk"},
+      "widgets_values": [
+        "2",
+        "Speaker1: Hello! How are you doing today?\nSpeaker2: I'm doing great, thank you for asking!\nSpeaker1: That's wonderful to hear. What have you been up to lately?\nSpeaker2: I've been working on some exciting new projects.\nSpeaker1: That sounds amazing! I'd love to hear more about it.\nSpeaker2: Sure! I'm developing a new AI application.",
+        "simple_conversation.wav",
+        "auto",
+        1.0,
+        0.8,
+        0.7,
+        0.9,
+        false,
+        false,
+        true
+      ],
+      "title": "💬 第3步：在第2个文本框输入对话！"
+    },
+    {
+      "id": 6,
+      "type": "PreviewAudio",
+      "pos": [1550, 150],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "audio", "type": "AUDIO", "link": 5}
+      ],
+      "properties": {"Node name for S&R": "PreviewAudio"},
+      "title": "🔊 第4步：播放结果"
+    },
+    {
+      "id": 7,
+      "type": "ShowText|pysssss",
+      "pos": [1550, 250],
+      "size": {"0": 400, "1": 200},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 6}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "ℹ️ 查看合成信息"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 5, 0, "AUDIO"],
+    [2, 2, 0, 5, 1, "AUDIO"],
+    [3, 3, 0, 5, 2, "SPEAKER_EMOTION_CONFIG"],
+    [4, 4, 0, 5, 3, "SPEAKER_EMOTION_CONFIG"],
+    [5, 5, 0, 6, 0, "AUDIO"],
+    [6, 5, 2, 7, 0, "STRING"]
+  ],
+  "groups": [
+    {
+      "title": "🎵 第1步：加载音频文件",
+      "bounding": [50, 50, 400, 300],
+      "color": "#3f789e"
+    },
+    {
+      "title": "🎭 第2步：设置说话人情感",
+      "bounding": [450, 50, 450, 900],
+      "color": "#a1309b"
+    },
+    {
+      "title": "💬 第3步：输入对话文本",
+      "bounding": [900, 50, 600, 550],
+      "color": "#b58b2a"
+    },
+    {
+      "title": "🔊 第4步：播放和查看结果",
+      "bounding": [1500, 50, 500, 450],
+      "color": "#88a96e"
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [0, 0]
+    }
+  },
+  "version": 0.4
+}

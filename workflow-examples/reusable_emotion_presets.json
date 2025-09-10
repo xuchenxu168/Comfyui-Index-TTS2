@@ -1,0 +1,373 @@
+{
+  "last_node_id": 20,
+  "last_link_id": 35,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadAudio",
+      "pos": [100, 100],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [1, 11], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["male_voice.wav"]
+    },
+    {
+      "id": 2,
+      "type": "LoadAudio",
+      "pos": [100, 200],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "AUDIO", "type": "AUDIO", "links": [2, 12], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadAudio"},
+      "widgets_values": ["female_voice.wav"]
+    },
+    {
+      "id": 3,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 100],
+      "size": {"0": 300, "1": 380},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [3, 13], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [21], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Happy Person",
+        "emotion_vector",
+        "",
+        1.0,
+        0.9,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.0,
+        "",
+        true
+      ],
+      "title": "Preset: Happy & Excited"
+    },
+    {
+      "id": 4,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 520],
+      "size": {"0": 300, "1": 380},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [4, 14], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [22], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Worried Person",
+        "emotion_vector",
+        "",
+        1.0,
+        0.0,
+        0.0,
+        0.7,
+        0.5,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        "",
+        true
+      ],
+      "title": "Preset: Sad & Fearful"
+    },
+    {
+      "id": 5,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 940],
+      "size": {"0": 300, "1": 380},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [5], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [23], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Angry Person",
+        "emotion_vector",
+        "",
+        1.2,
+        0.0,
+        0.8,
+        0.0,
+        0.0,
+        0.2,
+        0.0,
+        0.0,
+        0.0,
+        "",
+        true
+      ],
+      "title": "Preset: Angry & Hateful"
+    },
+    {
+      "id": 6,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [500, 1360],
+      "size": {"0": 300, "1": 380},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [6], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [24], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_SpeakerEmotionConfig"},
+      "widgets_values": [
+        "Neutral Person",
+        "emotion_vector",
+        "",
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        "",
+        true
+      ],
+      "title": "Preset: Neutral & Calm"
+    },
+    {
+      "id": 7,
+      "type": "IndexTTS2_MultiTalk",
+      "pos": [900, 200],
+      "size": {"0": 400, "1": 280},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "speaker1_audio", "type": "AUDIO", "link": 1},
+        {"name": "speaker2_audio", "type": "AUDIO", "link": 2},
+        {"name": "speaker1_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 3},
+        {"name": "speaker2_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 4}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [7], "shape": 3},
+        {"name": "output_path", "type": "STRING", "links": [8], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [9], "shape": 3},
+        {"name": "emotion_analysis", "type": "STRING", "links": [10], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_MultiTalk"},
+      "widgets_values": [
+        "2",
+        "Speaker1: I just got the promotion! I'm so thrilled!\nSpeaker2: Oh no... I didn't get it. I'm really disappointed.",
+        "conversation_1.wav",
+        "auto",
+        1.0,
+        0.8,
+        0.7,
+        0.9,
+        false,
+        false,
+        true
+      ],
+      "title": "Conversation 1: Good News vs Bad News"
+    },
+    {
+      "id": 8,
+      "type": "IndexTTS2_MultiTalk",
+      "pos": [900, 600],
+      "size": {"0": 400, "1": 280},
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "speaker1_audio", "type": "AUDIO", "link": 11},
+        {"name": "speaker2_audio", "type": "AUDIO", "link": 12},
+        {"name": "speaker1_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 13},
+        {"name": "speaker2_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 14}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [15], "shape": 3},
+        {"name": "output_path", "type": "STRING", "links": [16], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [17], "shape": 3},
+        {"name": "emotion_analysis", "type": "STRING", "links": [18], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2_MultiTalk"},
+      "widgets_values": [
+        "2",
+        "Speaker1: Let's celebrate! This is amazing news!\nSpeaker2: I'm still worried about what this means for the team.",
+        "conversation_2.wav",
+        "auto",
+        1.0,
+        0.8,
+        0.7,
+        0.9,
+        false,
+        false,
+        true
+      ],
+      "title": "Conversation 2: Same Emotions, Different Context"
+    },
+    {
+      "id": 9,
+      "type": "PreviewAudio",
+      "pos": [1400, 100],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "audio", "type": "AUDIO", "link": 7}
+      ],
+      "properties": {"Node name for S&R": "PreviewAudio"},
+      "title": "Preview Conversation 1"
+    },
+    {
+      "id": 10,
+      "type": "PreviewAudio",
+      "pos": [1400, 200],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {"name": "audio", "type": "AUDIO", "link": 15}
+      ],
+      "properties": {"Node name for S&R": "PreviewAudio"},
+      "title": "Preview Conversation 2"
+    },
+    {
+      "id": 11,
+      "type": "ShowText|pysssss",
+      "pos": [1400, 300],
+      "size": {"0": 350, "1": 150},
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 9}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "Info: Conversation 1"
+    },
+    {
+      "id": 12,
+      "type": "ShowText|pysssss",
+      "pos": [1400, 500],
+      "size": {"0": 350, "1": 150},
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 17}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "Info: Conversation 2"
+    },
+    {
+      "id": 13,
+      "type": "ShowText|pysssss",
+      "pos": [850, 950],
+      "size": {"0": 250, "1": 100},
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 21}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "Happy Preset"
+    },
+    {
+      "id": 14,
+      "type": "ShowText|pysssss",
+      "pos": [850, 1080],
+      "size": {"0": 250, "1": 100},
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 22}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""],
+      "title": "Worried Preset"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 7, 0, "AUDIO"],
+    [2, 2, 0, 7, 1, "AUDIO"],
+    [3, 3, 0, 7, 2, "SPEAKER_EMOTION_CONFIG"],
+    [4, 4, 0, 7, 3, "SPEAKER_EMOTION_CONFIG"],
+    [7, 7, 0, 9, 0, "AUDIO"],
+    [8, 7, 1, 11, 0, "STRING"],
+    [9, 7, 2, 11, 0, "STRING"],
+    [10, 7, 3, 11, 0, "STRING"],
+    [11, 1, 0, 8, 0, "AUDIO"],
+    [12, 2, 0, 8, 1, "AUDIO"],
+    [13, 3, 0, 8, 2, "SPEAKER_EMOTION_CONFIG"],
+    [14, 4, 0, 8, 3, "SPEAKER_EMOTION_CONFIG"],
+    [15, 8, 0, 10, 0, "AUDIO"],
+    [16, 8, 1, 12, 0, "STRING"],
+    [17, 8, 2, 12, 0, "STRING"],
+    [18, 8, 3, 12, 0, "STRING"],
+    [21, 3, 1, 13, 0, "STRING"],
+    [22, 4, 1, 14, 0, "STRING"]
+  ],
+  "groups": [
+    {
+      "title": "Audio Sources",
+      "bounding": [50, 50, 400, 200],
+      "color": "#3f789e"
+    },
+    {
+      "title": "Emotion Presets Library",
+      "bounding": [450, 50, 400, 1750],
+      "color": "#a1309b"
+    },
+    {
+      "title": "Multiple Conversations",
+      "bounding": [850, 50, 500, 900],
+      "color": "#b58b2a"
+    },
+    {
+      "title": "Outputs & Preview",
+      "bounding": [1350, 50, 450, 650],
+      "color": "#88a96e"
+    },
+    {
+      "title": "Preset Information",
+      "bounding": [850, 900, 300, 250],
+      "color": "#6b8e23"
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6,
+      "offset": [50, 0]
+    }
+  },
+  "version": 0.4
+}

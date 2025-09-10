@@ -1,0 +1,298 @@
+{
+  "last_node_id": 20,
+  "last_link_id": 35,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "IndexTTS2 Load Audio File",
+      "pos": [100, 100],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [1], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2 Load Audio File"},
+      "widgets_values": ["speaker1_voice.wav"]
+    },
+    {
+      "id": 2,
+      "type": "IndexTTS2 Load Audio File",
+      "pos": [100, 200],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [2], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2 Load Audio File"},
+      "widgets_values": ["speaker2_voice.wav"]
+    },
+    {
+      "id": 3,
+      "type": "IndexTTS2 Load Audio File",
+      "pos": [100, 300],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [3], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2 Load Audio File"},
+      "widgets_values": ["speaker3_voice.wav"]
+    },
+    {
+      "id": 11,
+      "type": "IndexTTS2 Speaker Emotion Config",
+      "pos": [500, 100],
+      "size": {"0": 350, "1": 400},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [11], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [21], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2 Speaker Emotion Config"},
+      "widgets_values": [
+        "Speaker1",
+        "emotion_vector",
+        "",
+        1.0,
+        0.8,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 12,
+      "type": "IndexTTS2 Speaker Emotion Config",
+      "pos": [500, 550],
+      "size": {"0": 350, "1": 400},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [12], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [22], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2 Speaker Emotion Config"},
+      "widgets_values": [
+        "Speaker2",
+        "emotion_vector",
+        "",
+        1.0,
+        0.0,
+        0.1,
+        0.7,
+        0.6,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 13,
+      "type": "IndexTTS2 Speaker Emotion Config",
+      "pos": [500, 1000],
+      "size": {"0": 350, "1": 400},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {"name": "emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "links": [13], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [23], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2 Speaker Emotion Config"},
+      "widgets_values": [
+        "Speaker3",
+        "emotion_vector",
+        "",
+        1.0,
+        0.6,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.2,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 10,
+      "type": "IndexTTS2MultiTalkNode",
+      "pos": [900, 100],
+      "size": {"0": 400, "1": 300},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "speaker1_audio", "type": "AUDIO", "link": 1},
+        {"name": "speaker2_audio", "type": "AUDIO", "link": 2},
+        {"name": "speaker3_audio", "type": "AUDIO", "link": 3},
+        {"name": "speaker1_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 11},
+        {"name": "speaker2_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 12},
+        {"name": "speaker3_emotion_config", "type": "SPEAKER_EMOTION_CONFIG", "link": 13}
+      ],
+      "outputs": [
+        {"name": "audio", "type": "AUDIO", "links": [30], "shape": 3},
+        {"name": "output_path", "type": "STRING", "links": [31], "shape": 3},
+        {"name": "info", "type": "STRING", "links": [32], "shape": 3},
+        {"name": "emotion_analysis", "type": "STRING", "links": [33], "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "IndexTTS2MultiTalkNode"},
+      "widgets_values": [
+        "3",
+        "Speaker1: Hello everyone! I'm so excited to be here today!\nSpeaker2: Oh no, I'm really worried about this presentation.\nSpeaker3: Don't worry, we'll do great! I'm feeling confident.",
+        "multi_talk_modular_emotion_demo.wav",
+        "auto",
+        1.0,
+        0.5,
+        0.7,
+        0.9,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "id": 15,
+      "type": "PreviewAudio",
+      "pos": [1400, 100],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "audio", "type": "AUDIO", "link": 30}
+      ],
+      "properties": {"Node name for S&R": "PreviewAudio"}
+    },
+    {
+      "id": 16,
+      "type": "ShowText|pysssss",
+      "pos": [1400, 200],
+      "size": {"0": 400, "1": 200},
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 32}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""]
+    },
+    {
+      "id": 17,
+      "type": "ShowText|pysssss",
+      "pos": [1400, 450],
+      "size": {"0": 400, "1": 150},
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 33}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""]
+    },
+    {
+      "id": 18,
+      "type": "ShowText|pysssss",
+      "pos": [900, 550],
+      "size": {"0": 300, "1": 150},
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 21}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""]
+    },
+    {
+      "id": 19,
+      "type": "ShowText|pysssss",
+      "pos": [900, 750],
+      "size": {"0": 300, "1": 150},
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 22}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""]
+    },
+    {
+      "id": 20,
+      "type": "ShowText|pysssss",
+      "pos": [900, 950],
+      "size": {"0": 300, "1": 150},
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {"name": "text", "type": "STRING", "link": 23}
+      ],
+      "properties": {"Node name for S&R": "ShowText|pysssss"},
+      "widgets_values": [""]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 10, 0, "AUDIO"],
+    [2, 2, 0, 10, 1, "AUDIO"],
+    [3, 3, 0, 10, 2, "AUDIO"],
+    [11, 11, 0, 10, 3, "SPEAKER_EMOTION_CONFIG"],
+    [12, 12, 0, 10, 4, "SPEAKER_EMOTION_CONFIG"],
+    [13, 13, 0, 10, 5, "SPEAKER_EMOTION_CONFIG"],
+    [21, 11, 1, 18, 0, "STRING"],
+    [22, 12, 1, 19, 0, "STRING"],
+    [23, 13, 1, 20, 0, "STRING"],
+    [30, 10, 0, 15, 0, "AUDIO"],
+    [31, 10, 1, 16, 0, "STRING"],
+    [32, 10, 2, 16, 0, "STRING"],
+    [33, 10, 3, 17, 0, "STRING"]
+  ],
+  "groups": [
+    {
+      "title": "Speaker Audio Inputs",
+      "bounding": [50, 50, 400, 300],
+      "color": "#3f789e"
+    },
+    {
+      "title": "Emotion Configurations",
+      "bounding": [450, 50, 400, 1400],
+      "color": "#a1309b"
+    },
+    {
+      "title": "Multi-Talk Synthesis",
+      "bounding": [850, 50, 500, 400],
+      "color": "#b58b2a"
+    },
+    {
+      "title": "Outputs and Preview",
+      "bounding": [1350, 50, 500, 600],
+      "color": "#88a96e"
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
