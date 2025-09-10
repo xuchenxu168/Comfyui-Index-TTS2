@@ -1,0 +1,112 @@
+{
+  "plugin_info": {
+    "name": "ComfyUI IndexTTS2",
+    "version": "2.0.0",
+    "description": "Comprehensive ComfyUI plugin for IndexTTS2 - breakthrough emotionally expressive and duration-controlled auto-regressive zero-shot text-to-speech",
+    "author": "IndexTTS2 ComfyUI Plugin Team",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/your-repo/comfyui-index-tts2",
+    "documentation": "https://github.com/your-repo/comfyui-index-tts2/blob/main/README.md"
+  },
+  "model_config": {
+    "default_model_dir": "checkpoints",
+    "default_config_file": "config.yaml",
+    "supported_models": [
+      "IndexTTS-2",
+      "IndexTTS-1.5",
+      "IndexTTS-1.0"
+    ],
+    "model_cache_enabled": true,
+    "max_cached_models": 3
+  },
+  "audio_config": {
+    "default_sample_rate": 22050,
+    "supported_formats": ["wav", "mp3", "flac", "ogg"],
+    "max_audio_length": 300,
+    "min_audio_length": 1,
+    "default_output_format": "wav"
+  },
+  "synthesis_config": {
+    "default_temperature": 0.7,
+    "default_top_p": 0.9,
+    "default_speed_multiplier": 1.0,
+    "default_emotion_alpha": 1.0,
+    "max_text_length": 10000,
+    "supported_languages": ["zh", "en", "zh-en", "auto"]
+  },
+  "emotion_config": {
+    "emotion_dimensions": [
+      "happy",
+      "angry", 
+      "sad",
+      "fear",
+      "hate",
+      "low",
+      "surprise",
+      "neutral"
+    ],
+    "default_emotion_vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    "emotion_control_modes": [
+      "audio_prompt",
+      "emotion_vector",
+      "text_description",
+      "auto",
+      "mixed"
+    ]
+  },
+  "duration_config": {
+    "duration_control_modes": [
+      "speed_control",
+      "token_control", 
+      "target_duration",
+      "auto"
+    ],
+    "min_speed_multiplier": 0.5,
+    "max_speed_multiplier": 2.0,
+    "max_target_duration": 60.0,
+    "max_token_count": 2048
+  },
+  "performance_config": {
+    "default_use_fp16": false,
+    "default_use_cuda_kernel": false,
+    "memory_optimization": true,
+    "auto_device_selection": true,
+    "batch_processing": false
+  },
+  "ui_config": {
+    "node_categories": {
+      "basic": "IndexTTS2",
+      "control": "IndexTTS2/Control", 
+      "advanced": "IndexTTS2/Advanced",
+      "management": "IndexTTS2/Management",
+      "utils": "IndexTTS2/Utils"
+    },
+    "default_verbose": true,
+    "show_progress": true,
+    "auto_preview": false
+  },
+  "paths": {
+    "models_dir": "checkpoints",
+    "examples_dir": "examples",
+    "cache_dir": "cache",
+    "logs_dir": "logs"
+  },
+  "features": {
+    "zero_shot_cloning": true,
+    "duration_control": true,
+    "emotion_control": true,
+    "speaker_emotion_disentanglement": true,
+    "gpt_latent_representations": true,
+    "text_based_emotion": true,
+    "multi_language_support": true,
+    "audio_preprocessing": true,
+    "model_caching": true,
+    "batch_processing": false
+  },
+  "experimental": {
+    "advanced_prosody_control": true,
+    "real_time_synthesis": false,
+    "voice_conversion": false,
+    "style_transfer": false
+  }
+}

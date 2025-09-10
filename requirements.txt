@@ -1,0 +1,173 @@
+# ================================================================
+# ComfyUI IndexTTS2 Plugin - Complete Dependencies
+# ================================================================
+# 完整的 comfyui-index-tts2 插件依赖列表
+# Complete requirements for comfyui-index-tts2 plugin
+#
+# 安装方法 / Installation:
+# pip install -r requirements.txt
+#
+# 注意：某些依赖可能需要特定的 CUDA 版本
+# Note: Some dependencies may require specific CUDA versions
+# ================================================================
+
+# ================================================================
+# CORE PYTORCH & DEEP LEARNING FRAMEWORKS
+# ================================================================
+torch>=2.1.2,<2.5.0
+torchaudio>=2.1.2,<2.5.0
+torchvision>=0.16.0,<0.20.0
+numpy>=1.26.2,<2.0.0
+
+# ================================================================
+# TRANSFORMERS & NLP LIBRARIES
+# ================================================================
+transformers>=4.36.2,<5.0.0
+tokenizers>=0.15.0,<1.0.0
+accelerate>=0.20.0,<1.0.0
+sentencepiece>=0.1.99,<1.0.0
+huggingface-hub>=0.17.0,<1.0.0
+
+# ================================================================
+# AUDIO PROCESSING LIBRARIES
+# ================================================================
+librosa>=0.10.1,<1.0.0
+soundfile>=0.12.1,<1.0.0
+torchaudio>=2.1.2,<2.5.0
+ffmpeg-python>=0.2.0,<1.0.0
+descript-audiotools>=0.7.2,<1.0.0
+
+# ================================================================
+# SCIENTIFIC COMPUTING & MATH
+# ================================================================
+scipy>=1.11.0,<2.0.0
+pandas>=2.1.3,<3.0.0
+matplotlib>=3.8.2,<4.0.0
+numba>=0.58.1,<1.0.0
+
+# ================================================================
+# MACHINE LEARNING UTILITIES
+# ================================================================
+omegaconf>=2.3.0,<3.0.0
+einops>=0.8.1,<1.0.0
+safetensors>=0.4.0,<1.0.0
+munch>=4.0.0,<5.0.0
+
+# ================================================================
+# TEXT PROCESSING & LANGUAGE SUPPORT
+# ================================================================
+jieba>=0.42.1,<1.0.0
+cn2an>=0.5.22,<1.0.0
+g2p-en>=2.1.0,<3.0.0
+textstat>=0.7.0,<1.0.0
+
+# ================================================================
+# WEB & API FRAMEWORKS
+# ================================================================
+requests>=2.31.0,<3.0.0
+gradio>=4.0.0,<5.0.0
+json5>=0.10.0,<1.0.0
+
+# ================================================================
+# COMPUTER VISION (for some model components)
+# ================================================================
+opencv-python>=4.9.0.80,<5.0.0
+
+# ================================================================
+# MONITORING & LOGGING
+# ================================================================
+tqdm>=4.65.0,<5.0.0
+tensorboard>=2.9.1,<3.0.0
+
+# ================================================================
+# DEVELOPMENT & BUILDING TOOLS
+# ================================================================
+Cython>=3.0.7,<4.0.0
+
+# ================================================================
+# DEEP LEARNING ACCELERATION (Optional but recommended)
+# ================================================================
+# deepspeed>=0.17.1,<1.0.0  # Uncomment if you need DeepSpeed acceleration
+
+# ================================================================
+# MODEL REPOSITORIES & CLOUD SERVICES
+# ================================================================
+modelscope>=1.27.0,<2.0.0
+
+# ================================================================
+# LEGACY ML FRAMEWORKS (for compatibility)
+# ================================================================
+keras>=2.9.0,<3.0.0
+
+# ================================================================
+# PLATFORM-SPECIFIC TEXT PROCESSING
+# ================================================================
+# Linux/Windows 文本处理
+WeTextProcessing>=1.0.3; platform_system == "Linux"
+WeTextProcessing>=1.0.3; platform_system == "Windows"
+
+# macOS 文本处理 (替代方案)
+wetext>=1.0.0; platform_system == "Darwin"
+
+# ================================================================
+# OPTIONAL DEPENDENCIES (uncomment if needed)
+# ================================================================
+# 如果需要以下功能，请取消注释相应行：
+# If you need the following features, uncomment the respective lines:
+
+# GPU 加速 (如果有兼容的 GPU)
+# GPU acceleration (if you have compatible GPU)
+# deepspeed>=0.17.1,<1.0.0
+
+# 更多音频格式支持
+# Additional audio format support
+# pydub>=0.25.1,<1.0.0
+
+# 高级数据科学功能
+# Advanced data science features
+# scikit-learn>=1.3.0,<2.0.0
+# seaborn>=0.12.0,<1.0.0
+
+# 内存优化
+# Memory optimization
+# psutil>=5.9.0,<6.0.0
+
+# 高级文本标准化 (专业级文本处理)
+# Advanced text normalization (professional text processing)
+# 功能: 处理数字、日期、货币、缩写等复杂文本格式
+# Features: Handles numbers, dates, currencies, abbreviations
+# 大小: ~150MB (包含 OpenFst 依赖)
+# Size: ~150MB (includes OpenFst dependencies)
+# 平台支持: Linux x86_64 有预编译轮子，其他平台建议用 conda
+# Platform: Pre-compiled wheels for Linux x86_64, use conda for others
+# 安装命令: conda install -c conda-forge pynini=2.1.6
+# Install: conda install -c conda-forge pynini=2.1.6
+# pynini==2.1.6
+
+# ================================================================
+# INSTALLATION NOTES / 安装说明
+# ================================================================
+#
+# 1. 确保已安装 Python 3.8+
+#    Make sure Python 3.8+ is installed
+#
+# 2. 建议使用虚拟环境
+#    Recommended to use virtual environment:
+#    python -m venv venv
+#    source venv/bin/activate  # Linux/Mac
+#    venv\Scripts\activate     # Windows
+#
+# 3. 安装依赖
+#    Install dependencies:
+#    pip install -r requirements.txt
+#
+# 4. 如果遇到 CUDA 相关问题，请访问：
+#    For CUDA-related issues, visit:
+#    https://pytorch.org/get-started/locally/
+#
+# 5. 某些依赖可能需要系统级别的库支持
+#    Some dependencies may require system-level libraries:
+#    - FFmpeg (for audio processing)
+#    - Build tools (for compiling native extensions)
+#
+# ================================================================
