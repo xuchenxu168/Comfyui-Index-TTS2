@@ -1,0 +1,23 @@
+请将您的音频文件放在这个目录中
+Please put your audio files in this directory
+
+支持的格式 / Supported formats:
+- WAV (推荐 / Recommended)
+- MP3
+- FLAC
+- OGG
+- M4A
+
+音频要求 / Audio requirements:
+- 时长: 3-10秒 / Duration: 3-10 seconds
+- 质量: 清晰无噪音 / Quality: Clear and noise-free
+- 内容: 单一说话人 / Content: Single speaker
+
+示例文件名 / Example filenames:
+- female_voice_01.wav
+- male_voice_calm.wav
+- speaker_happy.wav
+- voice_sample.mp3
+
+放置音频文件后，重启ComfyUI即可在节点中选择
+After placing audio files, restart ComfyUI to select them in nodes
