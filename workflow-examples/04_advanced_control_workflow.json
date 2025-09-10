@@ -1,0 +1,448 @@
+{
+  "last_node_id": 10,
+  "last_link_id": 18,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "IndexTTS2_ModelManager",
+      "pos": [100, 100],
+      "size": [400, 300],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "INDEXTTS2_MODEL",
+          "links": [1, 2],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "model_info",
+          "type": "STRING",
+          "links": [3],
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "IndexTTS2_ModelManager"
+      },
+      "widgets_values": [
+        "checkpoints/config.yaml",
+        "checkpoints/",
+        "auto",
+        true,
+        false,
+        false,
+        true
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "IndexTTS2_Advanced",
+      "pos": [100, 500],
+      "size": [550, 800],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_manager",
+          "type": "INDEXTTS2_MODEL",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [4],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "output_path",
+          "type": "STRING",
+          "links": [5],
+          "shape": 3,
+          "slot_index": 1
+        },
+        {
+          "name": "synthesis_info",
+          "type": "STRING",
+          "links": [6],
+          "shape": 3,
+          "slot_index": 2
+        },
+        {
+          "name": "control_analysis",
+          "type": "STRING",
+          "links": [7],
+          "shape": 3,
+          "slot_index": 3
+        },
+        {
+          "name": "quality_metrics",
+          "type": "STRING",
+          "links": [8],
+          "shape": 3,
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "IndexTTS2_Advanced"
+      },
+      "widgets_values": [
+        "这是一个展示IndexTTS2高级控制功能的综合示例。我们可以同时控制语音的时长、情感和韵律特征，实现前所未有的精确控制。",
+        "premium_speaker.wav",
+        "advanced_comprehensive_output.wav",
+        "speed_control",
+        1.25,
+        512,
+        10.0,
+        "emotion_vector",
+        "emotion_happy_ref.wav",
+        1.0,
+        0.6,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.3,
+        0.1,
+        "confident and enthusiastic, with perfect clarity",
+        "mixed",
+        "zh",
+        1.0,
+        0.75,
+        0.9,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        true
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 3,
+      "type": "IndexTTS2_Advanced",
+      "pos": [100, 1400],
+      "size": [550, 800],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_manager",
+          "type": "INDEXTTS2_MODEL",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [9],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "output_path",
+          "type": "STRING",
+          "links": [10],
+          "shape": 3,
+          "slot_index": 1
+        },
+        {
+          "name": "synthesis_info",
+          "type": "STRING",
+          "links": [11],
+          "shape": 3,
+          "slot_index": 2
+        },
+        {
+          "name": "control_analysis",
+          "type": "STRING",
+          "links": [12],
+          "shape": 3,
+          "slot_index": 3
+        },
+        {
+          "name": "quality_metrics",
+          "type": "STRING",
+          "links": [13],
+          "shape": 3,
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "IndexTTS2_Advanced"
+      },
+      "widgets_values": [
+        "This advanced example demonstrates cross-lingual synthesis with emotional control and precise timing. The system can seamlessly blend languages while maintaining speaker characteristics.",
+        "multilingual_speaker.wav",
+        "advanced_crosslingual_output.wav",
+        "token_control",
+        1.0,
+        768,
+        15.0,
+        "text_description",
+        "",
+        1.2,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.7,
+        0.3,
+        "professional and authoritative, speaking with perfect pronunciation",
+        "gpt_latent",
+        "en",
+        1.0,
+        0.8,
+        0.85,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 4,
+      "type": "ShowText",
+      "pos": [750, 100],
+      "size": [350, 200],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ShowText"
+      },
+      "widgets_values": [""],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 5,
+      "type": "ShowText",
+      "pos": [750, 350],
+      "size": [350, 250],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 6
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ShowText"
+      },
+      "widgets_values": [""],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 6,
+      "type": "ShowText",
+      "pos": [750, 650],
+      "size": [350, 250],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 7
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ShowText"
+      },
+      "widgets_values": [""],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 7,
+      "type": "ShowText",
+      "pos": [750, 950],
+      "size": [350, 250],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ShowText"
+      },
+      "widgets_values": [""],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 8,
+      "type": "ShowText",
+      "pos": [750, 1250],
+      "size": [350, 300],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 11
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ShowText"
+      },
+      "widgets_values": [""],
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 9,
+      "type": "PreviewAudio",
+      "pos": [1200, 100],
+      "size": [300, 100],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 10,
+      "type": "PreviewAudio",
+      "pos": [1200, 250],
+      "size": [300, 100],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 9
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAudio"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "INDEXTTS2_MODEL"],
+    [2, 1, 0, 3, 0, "INDEXTTS2_MODEL"],
+    [3, 1, 1, 4, 0, "STRING"],
+    [4, 2, 0, 9, 0, "AUDIO"],
+    [5, 2, 1, null, null, "STRING"],
+    [6, 2, 2, 5, 0, "STRING"],
+    [7, 2, 3, 6, 0, "STRING"],
+    [8, 2, 4, 7, 0, "STRING"],
+    [9, 3, 0, 10, 0, "AUDIO"],
+    [10, 3, 1, null, null, "STRING"],
+    [11, 3, 2, 8, 0, "STRING"],
+    [12, 3, 3, null, null, "STRING"],
+    [13, 3, 4, null, null, "STRING"]
+  ],
+  "groups": [
+    {
+      "title": "模型管理 / Model Management",
+      "bounding": [80, 50, 440, 350],
+      "color": "#3f789e",
+      "font_size": 24
+    },
+    {
+      "title": "高级控制 (中文) / Advanced Control (Chinese)",
+      "bounding": [80, 450, 580, 850],
+      "color": "#8e3f3f",
+      "font_size": 24
+    },
+    {
+      "title": "高级控制 (英文) / Advanced Control (English)",
+      "bounding": [80, 1350, 580, 850],
+      "color": "#3f8e3f",
+      "font_size": 24
+    },
+    {
+      "title": "分析信息 / Analysis Information",
+      "bounding": [730, 50, 390, 1550],
+      "color": "#8e8e3f",
+      "font_size": 24
+    },
+    {
+      "title": "音频输出 / Audio Output",
+      "bounding": [1180, 50, 340, 320],
+      "color": "#8e3f8e",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6,
+      "offset": [-10, -5]
+    },
+    "workflow_info": {
+      "name": "IndexTTS2 高级控制工作流",
+      "description": "演示IndexTTS2的高级控制功能，包括模型管理和综合控制",
+      "version": "1.0",
+      "author": "IndexTTS2 Team"
+    }
+  },
+  "version": 0.4
+}
