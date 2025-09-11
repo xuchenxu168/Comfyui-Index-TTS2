@@ -116,15 +116,32 @@ cd comfyui-index-tts2
 pip install -r requirements.txt
 ```
 
-#### ⚡ Minimal Installation (Faster)
+#### ⚡ 智能安装 (推荐)
 ```bash
-pip install -r requirements_minimal.txt
+# 使用智能安装脚本，自动处理依赖问题
+python install_requirements.py
 ```
 
-#### 🔧 Full Installation (All Features)
+#### 📦 手动安装
 ```bash
-pip install -r requirements_full.txt
+# 标准安装（不包含可选的 pynini）
+pip install -r requirements.txt
+
+# 🪟 Windows 用户额外福利：安装 pynini 高级文本处理
+# Python 3.10 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp310-cp310-win_amd64.whl
+
+# Python 3.11 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp311-cp311-win_amd64.whl
+
+# Python 3.12 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp312-cp312-win_amd64.whl
+
+# Python 3.13 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp313-cp313-win_amd64.whl
 ```
+
+
 
 #### 🐍 Python 3.12+ Support
 ```bash
@@ -214,14 +231,74 @@ conda install -c conda-forge pynini=2.1.6
 pip install pynini==2.1.6
 ```
 
-**🪟 Windows**
+**🪟 Windows (现已简化！)**
 ```bash
-# Method 1: Conda (Recommended)
+# Method 1: 使用项目提供的轮子文件 (推荐，最简单)
+# Python 3.10 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp310-cp310-win_amd64.whl
+
+# Python 3.11 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp311-cp311-win_amd64.whl
+
+# Python 3.12 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp312-cp312-win_amd64.whl
+
+# Python 3.13 用户:
+pip install pynini-wheel/pynini-2.1.6.post1-cp313-cp313-win_amd64.whl
+
+# Method 2: 使用轮子文件快速安装脚本 (推荐)
+python install_pynini_wheel.py
+
+# Method 3: 使用完整安装脚本 (包含多种方法)
+python install_pynini_windows.py
+
+# Method 4: Conda (如果可用)
 conda install -c conda-forge pynini=2.1.6
 
-# Method 2: WSL (Windows Subsystem for Linux)
-# Install WSL, then use Linux instructions
+# Method 5: 跳过安装 (推荐给大多数用户)
+# pynini 是可选的，基本功能不受影响
 ```
+
+**🎉 Windows 用户福音！** 我们现在提供了预编译的 Windows 轮子文件，支持 Python 3.10-3.13，无需复杂的编译过程！
+
+#### 📦 Windows 轮子文件详情
+
+| Python 版本 | 轮子文件 | 大小 | 支持架构 |
+|-------------|----------|------|----------|
+| **Python 3.10** | `pynini-2.1.6.post1-cp310-cp310-win_amd64.whl` | ~150MB | Windows x64 |
+| **Python 3.11** | `pynini-2.1.6.post1-cp311-cp311-win_amd64.whl` | ~150MB | Windows x64 |
+| **Python 3.12** | `pynini-2.1.6.post1-cp312-cp312-win_amd64.whl` | ~150MB | Windows x64 |
+| **Python 3.13** | `pynini-2.1.6.post1-cp313-cp313-win_amd64.whl` | ~150MB | Windows x64 |
+
+**✅ 优势**:
+- 🚀 **即装即用** - 无需编译环境
+- ⚡ **快速安装** - 几秒钟完成安装
+- 🛡️ **稳定可靠** - 经过测试的预编译版本
+- 🔧 **零配置** - 无需安装 Visual Studio 或其他工具
+- 🎯 **全版本支持** - 覆盖 Python 3.10-3.13
+
+#### 🚀 Windows 用户快速安装指南
+
+**最简单的方法**：
+```bash
+# 一键安装 (自动检测 Python 版本)
+python install_pynini_wheel.py
+```
+
+**手动安装**：
+```bash
+# 检查您的 Python 版本
+python --version
+
+# 根据版本选择对应的轮子文件
+pip install pynini-wheel/pynini-2.1.6.post1-cp3XX-cp3XX-win_amd64.whl
+```
+
+**支持的 Python 版本**：
+- ✅ Python 3.10
+- ✅ Python 3.11
+- ✅ Python 3.12
+- ✅ Python 3.13
 
 #### ⚠️ Important Notes
 - **📦 Large Package**: ~150MB download size

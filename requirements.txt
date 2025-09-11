@@ -1,0 +1,82 @@
+# ================================================================
+# ComfyUI IndexTTS2 Plugin - Essential Dependencies Only
+# ================================================================
+# 仅包含 IndexTTS2 特有的必需依赖
+# Only essential dependencies specific to IndexTTS2
+#
+# 注意：ComfyUI 环境中的通用依赖（如 torch, numpy 等）已排除
+# Note: Common ComfyUI dependencies (torch, numpy, etc.) are excluded
+# ================================================================
+
+# IndexTTS2 特有的音频处理库
+# IndexTTS2-specific audio processing
+librosa>=0.10.1
+soundfile>=0.12.1
+
+# 中文文本处理 (IndexTTS2 必需)
+# Chinese text processing (required for IndexTTS2)
+jieba>=0.42.1
+cn2an>=0.5.22
+
+# 英文音素转换 (IndexTTS2 必需)
+# English phoneme conversion (required for IndexTTS2)
+g2p-en>=2.1.0
+
+# 配置文件处理 (IndexTTS2 必需)
+# Configuration file handling (required for IndexTTS2)
+omegaconf>=2.3.0
+munch>=4.0.0
+
+# 模型下载 (可选，如果使用 ModelScope)
+# Model download (optional, if using ModelScope)
+modelscope>=1.27.0
+
+# ================================================================
+# 可选依赖 / Optional Dependencies
+# ================================================================
+
+# 高级文本标准化 (完全可选)
+# Advanced text normalization (completely optional)
+#
+# 🎉 Windows 用户福音：我们现在提供预编译轮子文件！
+# 🎉 Good news for Windows users: We now provide pre-compiled wheel files!
+#
+# Windows 安装方法 (选择其一):
+# Windows installation methods (choose one):
+#
+# 方法1: 使用项目提供的轮子文件 (推荐)
+# Method 1: Use provided wheel files (recommended)
+# Python 3.10: pip install pynini-wheel/pynini-2.1.6.post1-cp310-cp310-win_amd64.whl
+# Python 3.11: pip install pynini-wheel/pynini-2.1.6.post1-cp311-cp311-win_amd64.whl
+# Python 3.12: pip install pynini-wheel/pynini-2.1.6.post1-cp312-cp312-win_amd64.whl
+# Python 3.13: pip install pynini-wheel/pynini-2.1.6.post1-cp313-cp313-win_amd64.whl
+#
+# 方法2: 使用自动安装脚本
+# Method 2: Use automatic installation script
+# python install_pynini_windows.py
+#
+# 方法3: 使用 conda (如果可用)
+# Method 3: Use conda (if available)
+# conda install -c conda-forge pynini=2.1.6
+#
+# 功能：处理复杂文本格式（数字、日期、货币等）
+# Function: Handles complex text formats (numbers, dates, currencies, etc.)
+#
+# 如果不需要高级文本处理，可以跳过安装，基本功能不受影响
+# If you don't need advanced text processing, you can skip installation
+#
+# pynini==2.1.6
+
+# ================================================================
+# 安装说明 / Installation Notes
+# ================================================================
+# 1. 确保 ComfyUI 环境已正确安装
+#    Make sure ComfyUI environment is properly installed
+#
+# 2. 在 ComfyUI 环境中安装：
+#    Install in ComfyUI environment:
+#    pip install -r requirements.txt
+#
+# 3. 如果遇到音频处理问题，可能需要安装 FFmpeg
+#    For audio processing issues, you may need to install FFmpeg
+# ================================================================
