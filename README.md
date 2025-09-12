@@ -1614,59 +1614,6 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 ---
 
-## 🚀 开发与发布
-
-### GitHub Actions 工作流
-
-本项目包含完整的 CI/CD 流水线：
-
-#### 📋 **持续集成 (CI)**
-- **触发条件**: 推送到 main/develop 分支，Pull Request
-- **测试环境**: Ubuntu + Windows, Python 3.10/3.11
-- **检查内容**:
-  - ✅ Python 语法验证
-  - ✅ 依赖项安装测试
-  - ✅ 模块导入测试
-  - ✅ 代码格式检查 (black, flake8, isort)
-  - ✅ 安全扫描 (bandit, safety)
-  - ✅ JSON 工作流验证
-
-#### 🚀 **自动发布 (Publish)**
-- **触发条件**: 推送版本标签 (v*)，手动触发
-- **发布内容**:
-  - 📦 创建 GitHub Release
-  - 📄 自动生成 Changelog
-  - 🗜️ 打包源码 (tar.gz + zip)
-  - 📋 生成 ComfyUI Manager 提交信息
-
-### 🏷️ **发布新版本**
-
-1. **创建版本标签**:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-
-2. **自动发布流程**:
-   - GitHub Actions 自动构建和测试
-   - 创建 GitHub Release
-   - 生成下载包
-   - 通知 ComfyUI Manager
-
-3. **手动触发**:
-   - 访问 GitHub Actions 页面
-   - 选择 "Publish ComfyUI IndexTTS2" 工作流
-   - 点击 "Run workflow"
-
-### 🔧 **开发贡献**
-
-欢迎提交 Pull Request！请确保：
-- 代码通过所有 CI 检查
-- 遵循项目代码风格
-- 添加适当的测试和文档
-
----
-
 <div align="center">
 
 ### 🚀 Ready to Create Amazing Voice Content?
