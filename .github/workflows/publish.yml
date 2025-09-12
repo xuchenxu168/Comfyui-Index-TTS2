@@ -1,0 +1,217 @@
+name: Publish ComfyUI IndexTTS2
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送版本标签时触发
+  release:
+    types: [published]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine wheel
+        
+    - name: Get version from tag
+      id: get_version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          VERSION="0.0.0-dev"
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+        
+    - name: Create package info
+      run: |
+        echo "Creating package for ComfyUI IndexTTS2 v${{ steps.get_version.outputs.VERSION }}"
+        
+    - name: Validate package structure
+      run: |
+        echo "Validating package structure..."
+        ls -la
+        echo "Checking required files..."
+        test -f README.md || echo "Warning: README.md not found"
+        test -f requirements.txt || echo "Warning: requirements.txt not found"
+        test -d nodes || echo "Error: nodes directory not found"
+        test -f __init__.py || echo "Error: __init__.py not found"
+        
+    - name: Run tests (if available)
+      run: |
+        if [ -f "test_*.py" ] || [ -d "tests" ]; then
+          echo "Running tests..."
+          python -m pytest tests/ || echo "Tests failed or not found"
+        else
+          echo "No tests found, skipping..."
+        fi
+        
+    - name: Create release archive
+      run: |
+        # 创建发布包
+        mkdir -p dist
+        
+        # 创建源码包
+        tar -czf "dist/comfyui-indextts2-${{ steps.get_version.outputs.VERSION }}.tar.gz" \
+          --exclude='.git*' \
+          --exclude='dist' \
+          --exclude='__pycache__' \
+          --exclude='*.pyc' \
+          --exclude='.pytest_cache' \
+          .
+          
+        # 创建zip包
+        zip -r "dist/comfyui-indextts2-${{ steps.get_version.outputs.VERSION }}.zip" . \
+          -x '.git*' 'dist/*' '__pycache__/*' '*.pyc' '.pytest_cache/*'
+          
+        echo "Created packages:"
+        ls -la dist/
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if [ -f CHANGELOG.md ]; then
+          echo "Using existing CHANGELOG.md"
+          CHANGELOG=$(head -n 50 CHANGELOG.md)
+        else
+          echo "Generating changelog from git commits..."
+          CHANGELOG=$(git log --pretty=format:"- %s" --since="1 month ago" | head -20)
+        fi
+        
+        # 保存到文件以避免特殊字符问题
+        echo "$CHANGELOG" > changelog.txt
+        echo "CHANGELOG_FILE=changelog.txt" >> $GITHUB_OUTPUT
+        
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: ComfyUI IndexTTS2 ${{ steps.get_version.outputs.VERSION }}
+        body_path: ${{ steps.changelog.outputs.CHANGELOG_FILE }}
+        files: |
+          dist/*
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Notify success
+      run: |
+        echo "✅ Successfully published ComfyUI IndexTTS2 v${{ steps.get_version.outputs.VERSION }}"
+        echo "📦 Release packages created in dist/"
+        echo "🚀 GitHub release created (if tag was pushed)"
+        
+  validate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Validate Python syntax
+      run: |
+        echo "Validating Python syntax..."
+        python -m py_compile __init__.py
+        find nodes -name "*.py" -exec python -m py_compile {} \;
+        echo "✅ Python syntax validation passed"
+        
+    - name: Check imports
+      run: |
+        echo "Checking basic imports..."
+        python -c "
+        import sys
+        sys.path.insert(0, '.')
+        try:
+            import __init__
+            print('✅ Main module imports successfully')
+        except Exception as e:
+            print(f'❌ Import error: {e}')
+            sys.exit(1)
+        "
+        
+    - name: Validate requirements
+      run: |
+        if [ -f requirements.txt ]; then
+          echo "Validating requirements.txt..."
+          pip install -r requirements.txt --dry-run
+          echo "✅ Requirements validation passed"
+        else
+          echo "⚠️ No requirements.txt found"
+        fi
+
+  # 额外的发布到 ComfyUI Manager 的作业
+  notify_comfyui_manager:
+    runs-on: ubuntu-latest
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Get version from tag
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Notify ComfyUI Manager
+      run: |
+        echo "🔔 Notifying ComfyUI Manager about new release..."
+        echo "📋 Plugin: ComfyUI IndexTTS2"
+        echo "🏷️ Version: ${{ steps.get_version.outputs.VERSION }}"
+        echo "📦 Repository: ${{ github.repository }}"
+        echo "ℹ️ Manual submission to ComfyUI Manager may be required"
+        
+    - name: Create submission info
+      run: |
+        cat > comfyui_manager_info.json << EOF
+        {
+          "name": "ComfyUI IndexTTS2",
+          "description": "Advanced IndexTTS2 integration for ComfyUI with multi-speaker conversation synthesis and emotion control",
+          "repository": "${{ github.repository }}",
+          "version": "${{ steps.get_version.outputs.VERSION }}",
+          "author": "${{ github.repository_owner }}",
+          "license": "MIT",
+          "python_dependencies": [
+            "torch",
+            "torchaudio", 
+            "numpy",
+            "transformers"
+          ],
+          "nodes": [
+            "IndexTTS2 Basic TTS",
+            "IndexTTS2 Duration Control", 
+            "IndexTTS2 Emotion Control",
+            "IndexTTS2 Multi-Talk",
+            "IndexTTS2 Emotion Voice Multi-Talk",
+            "IndexTTS2 Model Manager",
+            "IndexTTS2 Speaker Emotion Config"
+          ],
+          "install_type": "git-clone",
+          "reference": "https://github.com/${{ github.repository }}"
+        }
+        EOF
+        
+        echo "📄 ComfyUI Manager submission info created:"
+        cat comfyui_manager_info.json

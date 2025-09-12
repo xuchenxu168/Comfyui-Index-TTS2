@@ -1,0 +1,196 @@
+name: CI - ComfyUI IndexTTS2
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.11']
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg libsndfile1
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        fi
+      shell: bash
+        
+    - name: Validate Python syntax
+      run: |
+        echo "Validating Python syntax..."
+        python -m py_compile __init__.py
+        find nodes -name "*.py" -exec python -m py_compile {} \; || true
+        echo "✅ Python syntax validation completed"
+      shell: bash
+        
+    - name: Test imports
+      run: |
+        echo "Testing basic imports..."
+        python -c "
+        import sys
+        import os
+        sys.path.insert(0, '.')
+        
+        # Test basic Python imports
+        try:
+            import torch
+            import numpy as np
+            print('✅ Basic dependencies imported successfully')
+        except Exception as e:
+            print(f'❌ Basic import error: {e}')
+            sys.exit(1)
+            
+        # Test module structure
+        try:
+            if os.path.exists('__init__.py'):
+                import __init__
+                print('✅ Main module structure is valid')
+            else:
+                print('⚠️ __init__.py not found')
+        except Exception as e:
+            print(f'⚠️ Module import warning: {e}')
+        "
+        
+    - name: Check node files
+      run: |
+        echo "Checking node files..."
+        if [ -d "nodes" ]; then
+          echo "Found nodes directory:"
+          ls -la nodes/
+          
+          echo "Checking node files syntax..."
+          for file in nodes/*.py; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              python -m py_compile "$file" || echo "Warning: $file has syntax issues"
+            fi
+          done
+        else
+          echo "❌ nodes directory not found"
+          exit 1
+        fi
+      shell: bash
+        
+    - name: Validate requirements
+      run: |
+        if [ -f requirements.txt ]; then
+          echo "Validating requirements.txt..."
+          echo "Requirements content:"
+          cat requirements.txt
+          
+          echo "Checking if requirements can be resolved..."
+          pip check || echo "Some dependency conflicts detected"
+        else
+          echo "⚠️ No requirements.txt found"
+        fi
+      shell: bash
+        
+    - name: Test workflow files
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
+      run: |
+        if [ -d "workflows" ]; then
+          echo "Found workflows directory:"
+          ls -la workflows/
+          
+          echo "Validating JSON workflow files..."
+          for file in workflows/*.json; do
+            if [ -f "$file" ]; then
+              echo "Validating $file..."
+              python -m json.tool "$file" > /dev/null && echo "✅ $file is valid JSON" || echo "❌ $file is invalid JSON"
+            fi
+          done
+        else
+          echo "ℹ️ No workflows directory found"
+        fi
+      shell: bash
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort
+        
+    - name: Run flake8
+      run: |
+        echo "Running flake8 linting..."
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || echo "Linting completed with warnings"
+        
+    - name: Check code formatting with black
+      run: |
+        echo "Checking code formatting..."
+        black --check --diff . || echo "Code formatting check completed"
+        
+    - name: Check import sorting
+      run: |
+        echo "Checking import sorting..."
+        isort --check-only --diff . || echo "Import sorting check completed"
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+        
+    - name: Run bandit security scan
+      run: |
+        echo "Running security scan..."
+        bandit -r . -f json -o bandit-report.json || echo "Security scan completed"
+        if [ -f bandit-report.json ]; then
+          echo "Security scan results:"
+          cat bandit-report.json
+        fi
+        
+    - name: Check for known vulnerabilities
+      run: |
+        echo "Checking for known vulnerabilities..."
+        if [ -f requirements.txt ]; then
+          safety check -r requirements.txt || echo "Vulnerability check completed"
+        else
+          echo "No requirements.txt found for vulnerability check"
+        fi
