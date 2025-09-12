@@ -1,0 +1,684 @@
+{
+  "id": "fb42e2d3-09e7-408d-a4cc-9a053a53ba77",
+  "revision": 0,
+  "last_node_id": 12,
+  "last_link_id": 15,
+  "nodes": [
+    {
+      "id": 4,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [
+        500,
+        100
+      ],
+      "size": [
+        350,
+        420
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "emotion_config",
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "title": "😊 Speaker1 情感配置 (自信专业)",
+      "properties": {
+        "Node name for S&R": "IndexTTS2_SpeakerEmotionConfig",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Speaker1",
+        "emotion_vector",
+        "",
+        1,
+        0.6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.4,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 7,
+      "type": "IndexTTS2_MultiTalk",
+      "pos": [
+        989.0972290039062,
+        177.96763610839844
+      ],
+      "size": [
+        451.3374328613281,
+        650.1785278320312
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "speaker1_audio",
+          "type": "AUDIO",
+          "link": 1
+        },
+        {
+          "name": "speaker2_audio",
+          "type": "AUDIO",
+          "link": 2
+        },
+        {
+          "name": "speaker3_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 3
+        },
+        {
+          "name": "speaker4_audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "name": "model_manager",
+          "shape": 7,
+          "type": "INDEXTTS2_MODEL",
+          "link": null
+        },
+        {
+          "name": "speaker1_emotion_config",
+          "shape": 7,
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "link": 4
+        },
+        {
+          "name": "speaker2_emotion_config",
+          "shape": 7,
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "link": 5
+        },
+        {
+          "name": "speaker3_emotion_config",
+          "shape": 7,
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "link": 6
+        },
+        {
+          "name": "speaker4_emotion_config",
+          "shape": 7,
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            7
+          ]
+        },
+        {
+          "name": "output_path",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "emotion_analysis",
+          "type": "STRING",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "title": "💬 多人对话合成 - 在这里输入对话文本！",
+      "properties": {
+        "Node name for S&R": "IndexTTS2_MultiTalk",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "3",
+        "Speaker1: Welcome to our team meeting everyone!\nSpeaker2: Thank you for organizing this session.\nSpeaker3: I'm excited to share our latest project updates.\nSpeaker1: Great! Let's start with the quarterly review.\nSpeaker2: Our sales numbers have exceeded expectations this quarter.\nSpeaker3: The new product launch was particularly successful.\nSpeaker1: That's fantastic news. What are our next steps?\nSpeaker2: We should focus on expanding to new markets.\nSpeaker3: I agree, and we need to increase our marketing efforts.",
+        "business_meeting.wav",
+        "auto",
+        1,
+        0.8,
+        0.7,
+        0.9,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "id": 10,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1673.27392578125,
+        675.5274047851562
+      ],
+      "size": [
+        400,
+        150
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "🎭 情感分析",
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "f2838ed5e59de4d73cde5c98354b87a8d3200190",
+        "Node name for S&R": "ShowText|pysssss",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Speaker1: Vector emotion (Happy: 0.60)\nSpeaker2: Vector emotion (Neutral: 0.60)\nSpeaker3: Vector emotion (Happy: 0.70)\nSpeaker1: Vector emotion (Happy: 0.60)\nSpeaker2: Vector emotion (Neutral: 0.60)\nSpeaker3: Vector emotion (Happy: 0.70)\nSpeaker1: Vector emotion (Happy: 0.60)\nSpeaker2: Vector emotion (Neutral: 0.60)\nSpeaker3: Vector emotion (Happy: 0.70)"
+      ]
+    },
+    {
+      "id": 9,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1654.37646484375,
+        402.7204895019531
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "ℹ️ 合成信息",
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "f2838ed5e59de4d73cde5c98354b87a8d3200190",
+        "Node name for S&R": "ShowText|pysssss",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "=== IndexTTS2 Multi-Talk Synthesis with Emotion Control ===\nSpeakers: 3\nConversation Lines: 9\nLanguage: auto\nSpeed: 1.0x\nSilence Duration: 0.8s\nOutput: business_meeting.wav\n\n=== Speaker Emotion Settings ===\nSpeaker1: emotion_vector\n  Emotions: Happy: 0.60, Neutral: 0.40\nSpeaker2: emotion_vector\n  Emotions: Happy: 0.40, Neutral: 0.60\nSpeaker3: emotion_vector\n  Emotions: Happy: 0.70, Surprise: 0.20\n\n=== Conversation Preview ===\nSpeaker1: Welcome to our team meeting everyone!\nSpeaker2: Thank you for organizing this session.\nSpeaker3: I'm excited to share our latest project updates.\nSpeaker1: Great! Let's start with the quarterly review.\nSpeaker2: Our sales numbers have exceeded expectations this quarter.\n... and 4 more lines"
+      ]
+    },
+    {
+      "id": 1,
+      "type": "LoadAudio",
+      "pos": [
+        -7.2227630615234375,
+        201.2987518310547
+      ],
+      "size": [
+        315,
+        136
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "title": "📁 Speaker1 音频文件",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57",
+        "Node name for S&R": "LoadAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "1.flac",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoadAudio",
+      "pos": [
+        -12.554269790649414,
+        464.2062072753906
+      ],
+      "size": [
+        315,
+        136
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "title": "📁 Speaker2 音频文件",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57",
+        "Node name for S&R": "LoadAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "15.wav",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 3,
+      "type": "LoadAudio",
+      "pos": [
+        -26.77164649963379,
+        695.7168579101562
+      ],
+      "size": [
+        315,
+        136
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "title": "📁 Speaker3 音频文件",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57",
+        "Node name for S&R": "LoadAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "gao-1.flac",
+        null,
+        null
+      ]
+    },
+    {
+      "id": 8,
+      "type": "PreviewAudio",
+      "pos": [
+        1683.04833984375,
+        153.49734497070312
+      ],
+      "size": [
+        315,
+        88
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 7
+        }
+      ],
+      "outputs": [],
+      "title": "🔊 音频预览",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.57",
+        "Node name for S&R": "PreviewAudio",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 5,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [
+        500,
+        520
+      ],
+      "size": [
+        350,
+        420
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "emotion_config",
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "links": [
+            5
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "title": "😌 Speaker2 情感配置 (友好感谢)",
+      "properties": {
+        "Node name for S&R": "IndexTTS2_SpeakerEmotionConfig",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Speaker2",
+        "emotion_vector",
+        "",
+        1,
+        0.4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.6,
+        "",
+        true
+      ]
+    },
+    {
+      "id": 6,
+      "type": "IndexTTS2_SpeakerEmotionConfig",
+      "pos": [
+        493.12158203125,
+        988.148681640625
+      ],
+      "size": [
+        350,
+        420
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "emotion_config",
+          "type": "SPEAKER_EMOTION_CONFIG",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "title": "🎉 Speaker3 情感配置 (兴奋激动)",
+      "properties": {
+        "Node name for S&R": "IndexTTS2_SpeakerEmotionConfig",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.1",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Speaker3",
+        "emotion_vector",
+        "",
+        1,
+        0.7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.2,
+        0.1,
+        "",
+        true
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      7,
+      0,
+      "AUDIO"
+    ],
+    [
+      2,
+      2,
+      0,
+      7,
+      1,
+      "AUDIO"
+    ],
+    [
+      3,
+      3,
+      0,
+      7,
+      2,
+      "AUDIO"
+    ],
+    [
+      4,
+      4,
+      0,
+      7,
+      5,
+      "SPEAKER_EMOTION_CONFIG"
+    ],
+    [
+      5,
+      5,
+      0,
+      7,
+      6,
+      "SPEAKER_EMOTION_CONFIG"
+    ],
+    [
+      6,
+      6,
+      0,
+      7,
+      7,
+      "SPEAKER_EMOTION_CONFIG"
+    ],
+    [
+      7,
+      7,
+      0,
+      8,
+      0,
+      "AUDIO"
+    ],
+    [
+      8,
+      7,
+      2,
+      9,
+      0,
+      "STRING"
+    ],
+    [
+      9,
+      7,
+      3,
+      10,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "🎵 第1步：准备音频文件",
+      "bounding": [
+        -95.7281265258789,
+        58.88588333129883,
+        465.7553405761719,
+        840.4993286132812
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "🎭 第2步：配置说话人情感",
+      "bounding": [
+        450,
+        50,
+        462.440185546875,
+        1451.89111328125
+      ],
+      "color": "#a1309b",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "💬 第3步：输入对话文本并合成",
+      "bounding": [
+        900,
+        50,
+        599.1683959960938,
+        1018.9452514648438
+      ],
+      "color": "#b58b2a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "🔊 第4步：预览和查看结果",
+      "bounding": [
+        1587.434326171875,
+        26.30438232421875,
+        646.8737182617188,
+        851.3243408203125
+      ],
+      "color": "#88a96e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6588450000000013,
+      "offset": [
+        743.3063067496289,
+        316.76901367473465
+      ]
+    },
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "frontendVersion": "1.25.11",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}
