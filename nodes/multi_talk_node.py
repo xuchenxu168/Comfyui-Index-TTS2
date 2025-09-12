@@ -15,7 +15,7 @@ class IndexTTS2MultiTalkNode:
     Multi-speaker conversation text-to-speech synthesis node for IndexTTS2 with emotion control
 
     Features:
-    - Support 2-4 speakers conversation
+    - Support 1-4 speakers: 1=voice cloning, 2-4=conversation
     - Individual speaker voice cloning
     - Individual emotion control for each speaker
     - Multiple emotion control modes (audio, vector, text, auto)
@@ -32,20 +32,17 @@ class IndexTTS2MultiTalkNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "num_speakers": (["2", "3", "4"], {
+                "num_speakers": (["1", "2", "3", "4"], {
                     "default": "2",
-                    "tooltip": "对话人数 / Number of speakers"
+                    "tooltip": "对话人数 / Number of speakers (1=纯语音克隆)"
                 }),
                 "conversation_text": ("STRING", {
                     "multiline": True,
-                    "default": "Speaker1: Hello, how are you today?\nSpeaker2: I'm doing great, thank you for asking!",
-                    "placeholder": "输入对话文本，格式：Speaker1: 文本\\nSpeaker2: 文本..."
+                    "default": "Speaker1: Hello, how are you today!\nSpeaker2: I'm doing great, thank you for asking!",
+                    "placeholder": "单人模式：直接输入文本\\n多人模式：Speaker1: 文本\\nSpeaker2: 文本..."
                 }),
                 "speaker1_audio": ("AUDIO", {
                     "tooltip": "说话人1的音频样本 / Speaker 1 audio sample"
-                }),
-                "speaker2_audio": ("AUDIO", {
-                    "tooltip": "说话人2的音频样本 / Speaker 2 audio sample"
                 }),
                 "output_filename": ("STRING", {
                     "default": "multi_talk_emotion_output.wav",
@@ -53,6 +50,9 @@ class IndexTTS2MultiTalkNode:
                 }),
             },
             "optional": {
+                "speaker2_audio": ("AUDIO", {
+                    "tooltip": "说话人2的音频样本 / Speaker 2 audio sample (多人模式必需)"
+                }),
                 "speaker3_audio": ("AUDIO", {
                     "tooltip": "说话人3的音频样本（3-4人对话时需要）/ Speaker 3 audio sample (required for 3-4 speakers)"
                 }),
@@ -133,15 +133,15 @@ class IndexTTS2MultiTalkNode:
     RETURN_NAMES = ("audio", "output_path", "info", "emotion_analysis")
     FUNCTION = "synthesize_conversation"
     CATEGORY = "IndexTTS2/Advanced"
-    DESCRIPTION = "Multi-speaker conversation synthesis with individual emotion control using IndexTTS2 (2-4 speakers)"
+    DESCRIPTION = "1-4 speaker conversation synthesis with individual emotion control using IndexTTS2 (1=voice cloning, 2-4=conversation)"
     
     def synthesize_conversation(
         self,
         num_speakers: str,
         conversation_text: str,
         speaker1_audio: dict,
-        speaker2_audio: dict,
         output_filename: str,
+        speaker2_audio: Optional[dict] = None,
         speaker3_audio: Optional[dict] = None,
         speaker4_audio: Optional[dict] = None,
         model_manager: Optional[Any] = None,
@@ -171,7 +171,20 @@ class IndexTTS2MultiTalkNode:
 
             num_speakers_int = int(num_speakers)
 
+            # 检查是否为单人模式
+            if num_speakers_int == 1:
+                # 单人模式：纯语音克隆
+                return self._synthesize_single_speaker(
+                    conversation_text, speaker1_audio, speaker1_emotion_config,
+                    output_filename, model_manager, language, speed, temperature,
+                    top_p, use_fp16, use_cuda_kernel, verbose
+                )
+
+            # 多人模式：原有逻辑
             # 验证说话人音频
+            if speaker2_audio is None:
+                raise ValueError("Speaker 2 audio is required for 2+ speakers conversation")
+
             speaker_audios = [speaker1_audio, speaker2_audio]
             if num_speakers_int >= 3:
                 if speaker3_audio is None:
@@ -222,10 +235,13 @@ class IndexTTS2MultiTalkNode:
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
                     temp_output = tmp_file.name
 
+                # 处理语言参数
+                processed_language = language if language != "auto" else "zh"
+
                 # 执行单个片段的情感合成（带一致性控制）
                 emotion_analysis = self._synthesize_with_emotion(
                     model, text, speaker_audio_path, emotion_config,
-                    temp_output, temperature, top_p, verbose, voice_consistency
+                    temp_output, temperature, top_p, verbose, voice_consistency, processed_language
                 )
                 emotion_analysis_list.append(f"Speaker{speaker_idx + 1}: {emotion_analysis}")
 
@@ -258,8 +274,12 @@ class IndexTTS2MultiTalkNode:
             waveform = fix_comfyui_audio_compatibility(waveform)
             
             # ComfyUI AUDIO格式需要 [batch, channels, samples]
-            if waveform.dim() == 2:
-                waveform = waveform.unsqueeze(0)  # [channels, samples] -> [1, channels, samples]
+            if waveform.dim() == 1:
+                # [samples] -> [1, 1, samples]
+                waveform = waveform.unsqueeze(0).unsqueeze(0)
+            elif waveform.dim() == 2:
+                # [channels, samples] -> [1, channels, samples]
+                waveform = waveform.unsqueeze(0)
             
             # 创建ComfyUI AUDIO格式
             comfyui_audio = {
@@ -292,6 +312,113 @@ class IndexTTS2MultiTalkNode:
         except Exception as e:
             error_msg = f"IndexTTS2 multi-talk synthesis failed: {str(e)}"
             print(f"[MultiTalk Error] {error_msg}")
+            raise RuntimeError(error_msg)
+
+    def _synthesize_single_speaker(
+        self,
+        text: str,
+        speaker_audio: dict,
+        emotion_config: Optional[dict],
+        output_filename: str,
+        model_manager: Optional[Any],
+        language: str,
+        speed: float,
+        temperature: float,
+        top_p: float,
+        use_fp16: bool,
+        use_cuda_kernel: bool,
+        verbose: bool
+    ) -> Tuple[dict, str, str, str]:
+        """
+        单人模式合成
+        Single speaker mode synthesis
+        """
+        try:
+            if verbose:
+                print(f"[MultiTalk] 单人模式合成 / Single speaker mode synthesis")
+                print(f"[MultiTalk] 文本长度: {len(text)} 字符 / Text length: {len(text)} characters")
+
+            # 获取模型实例
+            if model_manager is not None:
+                model = model_manager
+            else:
+                model = self._load_default_model(use_fp16, use_cuda_kernel)
+
+            # 准备说话人音频
+            speaker_audio_path = self._prepare_speaker_audios([speaker_audio], verbose, 1.0, True)[0]
+
+            # 准备情感控制参数
+            if emotion_config is None:
+                emotion_config = {"mode": "none"}
+
+            # 创建临时输出文件
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                temp_output_path = temp_file.name
+
+            # 处理语言参数
+            processed_language = language if language != "auto" else "zh"
+
+            # 合成音频
+            emotion_analysis = self._synthesize_with_emotion(
+                model, text, speaker_audio_path, emotion_config, temp_output_path,
+                temperature, top_p, verbose, language=processed_language
+            )
+
+            # 从临时文件加载音频
+            if os.path.exists(temp_output_path):
+                audio_tensor, sample_rate = torchaudio.load(temp_output_path)
+                # 确保采样率正确
+                if sample_rate != 24000:
+                    import torchaudio.transforms as T
+                    resampler = T.Resample(sample_rate, 24000)
+                    audio_tensor = resampler(audio_tensor)
+            else:
+                raise RuntimeError("合成失败，临时音频文件不存在")
+
+            # 清理临时文件
+            try:
+                os.unlink(temp_output_path)
+            except:
+                pass
+
+            # 保存音频
+            output_path = self._save_audio(audio_tensor, output_filename)
+
+            # 生成信息
+            info = f"单人语音合成完成\n文本长度: {len(text)} 字符\n音频长度: {len(audio_tensor[0])/24000:.2f} 秒"
+            if emotion_config["mode"] != "none":
+                info += f"\n情绪模式: {emotion_config['mode']}"
+                info += f"\n情感分析: {emotion_analysis}"
+
+            # 清理临时文件
+            try:
+                os.unlink(speaker_audio_path)
+            except:
+                pass
+
+            # 确保音频格式符合 ComfyUI 标准 [batch, channels, samples]
+            if audio_tensor.dim() == 1:
+                # [samples] -> [1, 1, samples]
+                audio_tensor = audio_tensor.unsqueeze(0).unsqueeze(0)
+            elif audio_tensor.dim() == 2:
+                # [channels, samples] -> [1, channels, samples]
+                audio_tensor = audio_tensor.unsqueeze(0)
+
+            if verbose:
+                print(f"[MultiTalk SingleSpeaker] 最终音频格式: {audio_tensor.shape}")
+                print(f"[MultiTalk SingleSpeaker] ComfyUI AUDIO格式: batch={audio_tensor.shape[0]}, channels={audio_tensor.shape[1]}, samples={audio_tensor.shape[2]}")
+
+            # 返回ComfyUI格式的音频
+            comfyui_audio = {"waveform": audio_tensor, "sample_rate": 24000}
+
+            return (comfyui_audio, output_path, info, emotion_analysis)
+
+        except Exception as e:
+            error_msg = f"单人模式合成失败: {str(e)}"
+            print(f"[SingleSpeaker Error] {error_msg}")
+            import traceback
+            traceback.print_exc()
             raise RuntimeError(error_msg)
 
     def _parse_conversation(self, conversation_text: str, num_speakers: int, verbose: bool) -> List[Dict]:
@@ -413,10 +540,30 @@ class IndexTTS2MultiTalkNode:
 
         return emotion_configs
 
+    def _save_audio(self, audio_tensor, filename):
+        """保存音频文件"""
+        output_dir = folder_paths.get_output_directory()
+
+        # 确保文件名有正确的扩展名
+        if not filename.lower().endswith(('.wav', '.mp3', '.flac')):
+            filename = filename + ".wav"
+
+        output_path = os.path.join(output_dir, filename)
+
+        # 确保音频是正确的形状
+        if audio_tensor.dim() == 1:
+            audio_tensor = audio_tensor.unsqueeze(0)
+
+        # 保存音频
+        torchaudio.save(output_path, audio_tensor, 24000)
+        print(f"💾 Multi-talk conversation saved to: {output_path}")
+
+        return output_path
+
     def _synthesize_with_emotion(self, model, text: str, speaker_audio_path: str,
                                 emotion_config: Dict, output_path: str,
                                 temperature: float, top_p: float, verbose: bool,
-                                voice_consistency: float = 1.0) -> str:
+                                voice_consistency: float = 1.0, language: str = "zh") -> str:
         """执行带情感控制的语音合成"""
         emotion_mode = emotion_config["mode"]
 

@@ -366,10 +366,18 @@ class IndexTTS2AdvancedNode:
             return f"Audio emotion: {os.path.basename(emotion_audio)} (α={emotion_alpha})"
         
         elif emotion_mode == "emotion_vector":
+            # 验证情感向量
+            max_emotion_value = max(emotion_vector)
+            if max_emotion_value == 0.0:
+                # 如果所有情感值都为0，设置一个小的中性情感值
+                emotion_vector = emotion_vector.copy()
+                emotion_vector[7] = 0.1  # Neutral
+                max_emotion_value = 0.1
+
             infer_args["emo_vector"] = emotion_vector
             emotion_names = ["Happy", "Angry", "Sad", "Fear", "Hate", "Low", "Surprise", "Neutral"]
-            max_idx = emotion_vector.index(max(emotion_vector))
-            return f"Vector emotion: {emotion_names[max_idx]} ({emotion_vector[max_idx]:.2f})"
+            max_idx = emotion_vector.index(max_emotion_value)
+            return f"Vector emotion: {emotion_names[max_idx]} ({max_emotion_value:.2f})"
         
         elif emotion_mode == "text_description":
             infer_args["use_emo_text"] = True
@@ -385,7 +393,13 @@ class IndexTTS2AdvancedNode:
                 infer_args["emo_audio_prompt"] = emotion_audio
                 infer_args["emo_alpha"] = emotion_alpha * 0.7  # 降低权重以平衡
             
-            if any(v > 0.1 for v in emotion_vector):
+            # 检查情感向量是否有效
+            max_emotion_value = max(emotion_vector)
+            if max_emotion_value > 0.05:  # 降低阈值，更敏感
+                # 如果最大值太小，设置一个最小的中性情感值
+                if max_emotion_value < 0.1:
+                    emotion_vector = emotion_vector.copy()
+                    emotion_vector[7] = max(emotion_vector[7], 0.1)  # 确保至少有一些中性情感
                 infer_args["emo_vector"] = emotion_vector
             
             if emotion_text.strip():

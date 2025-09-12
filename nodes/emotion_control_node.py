@@ -69,74 +69,26 @@ class IndexTTS2EmotionNode:
             },
             "optional": {
                 "model_manager": ("INDEXTTS2_MODEL",),
-                "emotion_audio": ("STRING", {
-                    "default": "",
-                    "placeholder": "Path to emotion reference audio file"
+                "emotion_audio": ("AUDIO", {
+                    "tooltip": "连接加载音频节点提供情绪参考音频 / Connect Load Audio node for emotion reference"
                 }),
                 "emotion_alpha": ("FLOAT", {
                     "default": 1.0,
                     "min": 0.0,
                     "max": 2.0,
                     "step": 0.1,
-                    "display": "slider"
+                    "display": "slider",
+                    "forceInput": False
                 }),
                 # 8-dimensional emotion vector: Happy, Angry, Sad, Fear, Hate, Low, Surprise, Neutral
-                "happy": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "angry": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "sad": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "fear": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "hate": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "low": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "surprise": ("FLOAT", {
-                    "default": 0.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
-                "neutral": ("FLOAT", {
-                    "default": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.05,
-                    "display": "slider"
-                }),
+                "happy": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "angry": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "sad": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "fear": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "hate": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "low": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "surprise": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "neutral": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
                 "emotion_text": ("STRING", {
                     "multiline": True,
                     "default": "",
@@ -170,7 +122,7 @@ class IndexTTS2EmotionNode:
         emotion_mode: str,
         output_filename: str,
         model_manager: Optional[Any] = None,
-        emotion_audio: str = "",
+        emotion_audio: Optional[dict] = None,
         emotion_alpha: float = 1.0,
         happy: float = 0.0,
         angry: float = 0.0,
@@ -191,6 +143,9 @@ class IndexTTS2EmotionNode:
         Perform emotion-controlled text-to-speech synthesis
         """
         try:
+            # 初始化临时文件列表用于清理
+            temp_files_to_cleanup = []
+
             # 验证输入
             if not text.strip():
                 raise ValueError("Text input cannot be empty")
@@ -241,8 +196,15 @@ class IndexTTS2EmotionNode:
             emotion_analysis = ""
 
             if emotion_mode == "audio_prompt":
+                # 处理情绪音频输入
+                emotion_audio_path = ""
+                if emotion_audio is not None:
+                    emotion_audio_path = self._prepare_emotion_audio(emotion_audio, verbose)
+                    if emotion_audio_path:
+                        temp_files_to_cleanup.append(emotion_audio_path)
+
                 emotion_analysis = self._synthesize_audio_emotion(
-                    model, text, speaker_audio_path, emotion_audio, emotion_alpha,
+                    model, text, speaker_audio_path, emotion_audio_path, emotion_alpha,
                     output_path, use_random, verbose
                 )
             elif emotion_mode == "emotion_vector":
@@ -265,9 +227,14 @@ class IndexTTS2EmotionNode:
             audio_data = self._load_audio(output_path)
             
             # 生成信息字符串
+            # 对于audio_prompt模式，传递转换后的文件路径
+            emotion_audio_for_info = ""
+            if emotion_mode == "audio_prompt" and 'emotion_audio_path' in locals():
+                emotion_audio_for_info = emotion_audio_path
+
             info = self._generate_info(
                 text, speaker_audio_path, output_path, emotion_mode,
-                emotion_audio, emotion_alpha, [happy, angry, sad, fear, hate, low, surprise, neutral],
+                emotion_audio_for_info, emotion_alpha, [happy, angry, sad, fear, hate, low, surprise, neutral],
                 emotion_text
             )
             
@@ -289,9 +256,16 @@ class IndexTTS2EmotionNode:
                 "sample_rate": sample_rate
             }
 
+            # 清理临时文件
+            self._cleanup_temp_files(temp_files_to_cleanup)
+
             return (comfyui_audio, output_path, info, emotion_analysis)
-            
+
         except Exception as e:
+            # 异常时也要清理临时文件
+            if 'temp_files_to_cleanup' in locals():
+                self._cleanup_temp_files(temp_files_to_cleanup)
+
             error_msg = f"IndexTTS2 emotion synthesis failed: {str(e)}"
             print(f"[IndexTTS2 Emotion Error] {error_msg}")
             raise RuntimeError(error_msg)
@@ -474,6 +448,49 @@ class IndexTTS2EmotionNode:
             info_lines.append(f"Emotion Text: {emotion_text[:50]}{'...' if len(emotion_text) > 50 else ''}")
         
         return "\n".join(info_lines)
+
+    def _prepare_emotion_audio(self, emotion_audio: dict, verbose: bool) -> str:
+        """将AUDIO对象转换为临时文件路径"""
+        import tempfile
+        import torchaudio
+
+        if not isinstance(emotion_audio, dict) or "waveform" not in emotion_audio or "sample_rate" not in emotion_audio:
+            if verbose:
+                print("[IndexTTS2] Invalid emotion audio object, skipping emotion control")
+            return ""
+
+        waveform = emotion_audio["waveform"]
+        sample_rate = emotion_audio["sample_rate"]
+
+        # 移除batch维度（如果存在）
+        if waveform.dim() == 3:
+            waveform = waveform.squeeze(0)
+
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        # 保存音频到临时文件
+        torchaudio.save(temp_path, waveform, sample_rate)
+
+        if verbose:
+            print(f"[IndexTTS2] Emotion audio saved to temporary file: {temp_path}")
+            print(f"[IndexTTS2] Emotion audio shape: {waveform.shape}, sample rate: {sample_rate}")
+
+        return temp_path
+
+    def _cleanup_temp_files(self, temp_files: list):
+        """清理临时文件"""
+        import os
+
+        for temp_file in temp_files:
+            try:
+                if temp_file and os.path.exists(temp_file):
+                    os.unlink(temp_file)
+            except Exception as e:
+                # 清理失败不应该影响主流程
+                print(f"[IndexTTS2] Warning: Failed to cleanup temp file {temp_file}: {e}")
+                pass
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

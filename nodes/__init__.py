@@ -16,6 +16,7 @@ Nodes:
 - IndexTTS2ModelManagerNode: Model loading and management
 - IndexTTS2AudioUtilsNode: Audio processing utilities
 - IndexTTS2MultiTalkNode: Multi-speaker conversation synthesis (2-4 speakers)
+- IndexTTS2EmotionVoiceMultiTalkNode: Emotion voice controlled multi-speaker conversation (2-4 speakers)
 """
 
 __version__ = "2.0.0"
