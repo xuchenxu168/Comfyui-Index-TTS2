@@ -8,6 +8,7 @@ numpy>=1.24.0
 soundfile>=0.12.1
 scipy>=1.11.0
 librosa>=0.10.1
+descript-audiotools
 
 # Transformers and NLP (Python 3.12 compatible versions)
 transformers>=4.36.0
@@ -19,11 +20,13 @@ safetensors>=0.4.0
 einops>=0.8.0
 omegaconf>=2.3.0
 sentencepiece>=0.1.99
+json5>=0.9.0
 
 # Text Processing (Python 3.12 compatible alternatives)
 jieba>=0.42.1
 cn2an>=0.5.22
 g2p-en>=2.1.0
+wetext>=0.1.0
 
 # Utilities
 requests>=2.31.0
@@ -35,6 +38,34 @@ huggingface-hub>=0.19.0
 
 # Audio/Video Processing
 ffmpeg-python>=0.2.0
+
+# Python compilation and extensions
+Cython>=0.29.0
+
+# Machine learning and deep learning frameworks
+keras>=2.12.0
+
+# Numerical computing and acceleration
+numpy>=1.22.0
+numba>=0.58.0
+
+# Data processing and analysis
+pandas>=1.5.0
+
+# Visualization and plotting
+matplotlib>=3.5.0
+
+# Computer vision
+opencv-python>=4.5.0
+
+# Training monitoring and logging
+tensorboard>=2.12.0
+
+# Progress bars and user interface
+tqdm>=4.64.0
+
+# Text analysis and statistics
+textstat>=0.7.0
 
 # Python 3.12 Compatible Alternatives
 # 注意：以下包可能需要特殊处理或替代方案

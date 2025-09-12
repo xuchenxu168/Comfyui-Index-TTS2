@@ -12,11 +12,13 @@
 # IndexTTS2-specific audio processing
 librosa>=0.10.1
 soundfile>=0.12.1
+descript-audiotools
 
 # 中文文本处理 (IndexTTS2 必需)
 # Chinese text processing (required for IndexTTS2)
 jieba>=0.42.1
 cn2an>=0.5.22
+wetext>=0.1.0
 
 # 英文音素转换 (IndexTTS2 必需)
 # English phoneme conversion (required for IndexTTS2)
@@ -26,10 +28,44 @@ g2p-en>=2.1.0
 # Configuration file handling (required for IndexTTS2)
 omegaconf>=2.3.0
 munch>=4.0.0
+json5>=0.9.0
 
-# 模型下载 (可选，如果使用 ModelScope)
-# Model download (optional, if using ModelScope)
+# 深度学习和张量操作 (IndexTTS2 必需)
+# Deep learning and tensor operations (required for IndexTTS2)
+einops>=0.8.0
+scipy>=1.11.0
+numpy>=1.22.0
+numba>=0.51.0
+
+# 模型下载和处理 (IndexTTS2 必需)
+# Model download and processing (required for IndexTTS2)
 modelscope>=1.27.0
+transformers>=4.36.0
+tokenizers>=0.15.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+huggingface-hub>=0.19.0
+sentencepiece>=0.1.99
+
+# 音频/视频处理和编解码
+# Audio/video processing and codecs
+ffmpeg-python>=0.2.0
+
+# 数据处理和分析
+# Data processing and analysis
+pandas>=1.5.0
+
+# 可视化和绘图
+# Visualization and plotting
+matplotlib>=3.5.0
+
+# 训练监控和日志
+# Training monitoring and logging
+tensorboard>=2.12.0
+
+# 进度条和用户界面
+# Progress bars and user interface
+tqdm>=4.64.0
 
 # ================================================================
 # 可选依赖 / Optional Dependencies
@@ -94,6 +130,27 @@ modelscope>=1.27.0
 #
 # 如果安装失败，可以跳过，基本功能不受影响
 # If installation fails, you can skip it, basic functions are not affected
+
+# ================================================================
+# 扩展功能依赖 (可选)
+# Extended Features Dependencies (optional)
+# ================================================================
+
+# Python 编译和扩展 (可选)
+# Python compilation and extensions (optional)
+# Cython>=0.29.0
+
+# 机器学习框架 (可选)
+# Machine learning frameworks (optional)
+# keras>=2.12.0
+
+# 计算机视觉 (可选)
+# Computer vision (optional)
+# opencv-python>=4.5.0
+
+# 文本分析和统计 (可选)
+# Text analysis and statistics (optional)
+# textstat>=0.7.0
 
 # ================================================================
 # 安装说明 / Installation Notes

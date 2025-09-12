@@ -197,8 +197,101 @@ python download_models.py
 
 ### Step 5: Verify Installation
 ```bash
-python check_all_dependencies.py
+# Check transformers compatibility
+python check_transformers_compatibility.py
+
+# Or verify by loading a node in ComfyUI
+# The nodes should appear in the IndexTTS2 category
 ```
+
+### 🔧 Troubleshooting Dependencies
+
+If you encounter missing dependencies in different environments, you can check compatibility:
+
+```bash
+# Check transformers compatibility
+python check_transformers_compatibility.py
+
+# Install missing dependencies
+pip install -r requirements.txt
+```
+
+**Common Missing Dependencies:**
+- `descript-audiotools` - Required for audio processing (imports as `audiotools`)
+- `json5` - Required for configuration files
+- `transformers` - Required for model loading
+- `einops` - Required for tensor operations
+- `WeTextProcessing` - Optional for better text normalization (may fail on Windows)
+
+**Quick Fix for Missing Dependencies:**
+```bash
+# Install all required dependencies
+pip install -r requirements.txt
+
+# For Python 3.12 environments
+pip install -r requirements_py312.txt
+
+# Install specific missing packages
+pip install descript-audiotools json5 transformers einops
+
+# Alternative audiotools installation (if pip fails)
+pip install git+https://github.com/descriptinc/audiotools
+```
+
+**🔧 Special Notes for Dependencies:**
+
+**For audiotools:**
+If `pip install descript-audiotools` fails, try:
+```bash
+# Method 1: Install from GitHub
+pip install git+https://github.com/descriptinc/audiotools
+
+# Method 2: Clone and install manually
+git clone https://github.com/descriptinc/audiotools
+cd audiotools
+pip install .
+```
+
+**For Text Normalization:**
+IndexTTS2 now uses `wetext` for better text normalization - **no pynini dependency required!**
+
+**🎉 wetext - The Perfect Solution**
+- ✅ **wetext-0.1.0-py3-none-any.whl** - Universal Windows wheel available
+- ✅ **No pynini dependency** - avoids all compilation issues
+- ✅ **Same functionality** as WeTextProcessing but more reliable
+- ✅ **Now included in requirements.txt** - automatically installed
+
+**🔍 Common Issue: "Why does WeTextProcessing recompile pynini even when it's already installed?"**
+
+This happens because:
+1. **Version Pinning**: WeTextProcessing requires `pynini==2.1.6` specifically
+2. **Dependency Resolution**: pip tries to install the exact version required
+3. **Build Dependencies**: WeTextProcessing may specify build-time dependencies
+4. **Platform Compatibility**: Your pynini wheel may not match WeTextProcessing's requirements
+
+**🚀 Solutions (if wetext installation fails):**
+
+```bash
+# Method 1: wetext is now in requirements.txt (automatic)
+pip install -r requirements.txt
+
+# Method 2: Manual wetext installation
+pip install wetext
+
+# Method 3: Alternative - WeTextProcessing (if you prefer)
+pip install WeTextProcessing --only-binary=all
+
+# Method 4: Use our complete solution installer
+python install_text_processing_solution.py
+
+# Method 5: Use fallback (always works)
+# Skip text processing packages - IndexTTS2 works with basic fallback
+```
+
+**🎉 wetext is now the default!**
+Since wetext is superior (no pynini dependency, same functionality), it's now included in requirements.txt and will be automatically installed.
+
+**Note:** If WeTextProcessing installation fails, IndexTTS2 will automatically fall back to basic text processing. The plugin will still work, but text normalization quality may be reduced.
 
 </details>
 
