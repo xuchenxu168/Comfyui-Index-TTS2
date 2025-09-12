@@ -12,7 +12,7 @@
 
 *Breakthrough emotionally expressive and duration-controlled autoregressive zero-shot text-to-speech synthesis*
 
-[🎯 Quick Start](#-quick-start) • [📦 Installation](#-installation) • [🎨 Features](#-features) • [📚 Documentation](#-documentation) • [🤝 Community](#-community)
+[🚀 Model Download](#-model-download) • [📦 Installation](#-installation) • [🎯 Quick Start](#-quick-start) • [🎨 Features](#-features) • [📚 Documentation](#-documentation)
 
 </div>
 
@@ -76,7 +76,100 @@
 - **🧠 GPT Latent Integration**: Enhanced stability and naturalness
 - **🎛️ Professional Control**: Prosody, timing, and emotion fine-tuning
 
-## 📦 Installation
+## � Model Download
+
+<div align="center">
+
+### ⚠️ **IMPORTANT: Download Models First!**
+
+**IndexTTS2 requires pre-trained models to function. Please download them before installation.**
+
+</div>
+
+### 🔗 Model Download Links
+
+| Platform | Model | Download Link | Status |
+|----------|-------|---------------|--------|
+| **🤗 HuggingFace** | **IndexTTS-2** | [🤗 IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2) | ✅ **Recommended** |
+| **🔗 ModelScope** | **IndexTTS-2** | [🔗 IndexTTS-2](https://modelscope.cn/models/IndexTeam/IndexTTS-2) | ✅ **China Users** |
+| **🤗 HuggingFace** | IndexTTS-1.5 | [🤗 IndexTTS-1.5](https://huggingface.co/IndexTeam/IndexTTS-1.5) | 🔶 Legacy |
+| **🔗 ModelScope** | IndexTTS-1.5 | [🔗 IndexTTS-1.5](https://modelscope.cn/models/IndexTeam/IndexTTS-1.5) | 🔶 Legacy |
+| **🤗 HuggingFace** | IndexTTS | [🤗 IndexTTS](https://huggingface.co/IndexTeam/IndexTTS) | 🔶 Legacy |
+| **🔗 ModelScope** | IndexTTS | [🔗 IndexTTS](https://modelscope.cn/models/IndexTeam/IndexTTS) | 🔶 Legacy |
+
+### 📁 Model File Placement
+
+**重要说明**: 下载整个 IndexTTS-2 模型文件夹，并将其放入 `Models/TTS/` 目录中。
+
+```
+ComfyUI/
+└── Models/
+    └── TTS/
+        └── IndexTTS-2/          # 将下载的完整模型文件夹放在这里
+            ├── config.yaml
+            ├── model.pth
+            └── [其他模型文件...]
+```
+
+### 🚀 Download Methods
+
+<details>
+<summary><b>🎯 Method 1: Automatic Download (Recommended)</b></summary>
+
+```bash
+# After installing the plugin, run:
+python download_models.py
+```
+
+This script will automatically:
+- ✅ Detect your system and network
+- ✅ Choose the best download source
+- ✅ Place files in the correct location
+- ✅ Verify download integrity
+
+</details>
+
+<details>
+<summary><b>🛠️ Method 2: Manual Download</b></summary>
+
+#### Using HuggingFace CLI:
+```bash
+# Install huggingface-hub first
+pip install huggingface-hub
+
+# Download IndexTTS-2
+huggingface-cli download IndexTeam/IndexTTS-2 --local-dir=Models/TTS/IndexTTS-2
+```
+
+#### Using ModelScope CLI (China):
+```bash
+# Install modelscope first
+pip install modelscope
+
+# Download IndexTTS-2
+modelscope download --model IndexTeam/IndexTTS-2 --local_dir Models/TTS/IndexTTS-2
+```
+
+#### Direct Browser Download:
+1. Visit the model page (links above)
+2. Click "Download" or "Clone repository"
+3. Extract to `ComfyUI/Models/TTS/IndexTTS-2/`
+
+</details>
+
+### ✅ Verify Model Installation
+
+```bash
+# Check if models are correctly placed
+ls ComfyUI/Models/TTS/IndexTTS-2/
+
+# Expected output:
+# config.yaml  model.pth  [other model files...]
+```
+
+---
+
+## �📦 Installation
 
 <details>
 <summary><b>🚀 Quick Installation (Recommended)</b></summary>
@@ -159,40 +252,11 @@ pip install -e index-tts/
 
 ### Step 4: Download Models
 
-#### 🔗 Model Download Links
-
-| Platform | Model | Download Link |
-|----------|-------|---------------|
-| **HuggingFace** | IndexTTS-2 | [🤗 IndexTTS-2](https://huggingface.co/IndexTeam/IndexTTS-2) |
-| **ModelScope** | IndexTTS-2 | [🔗 IndexTTS-2](https://modelscope.cn/models/IndexTeam/IndexTTS-2) |
-| **HuggingFace** | IndexTTS-1.5 | [🤗 IndexTTS-1.5](https://huggingface.co/IndexTeam/IndexTTS-1.5) |
-| **ModelScope** | IndexTTS-1.5 | [🔗 IndexTTS-1.5](https://modelscope.cn/models/IndexTeam/IndexTTS-1.5) |
-| **HuggingFace** | IndexTTS | [🤗 IndexTTS](https://huggingface.co/IndexTeam/IndexTTS) |
-| **ModelScope** | IndexTTS | [🔗 IndexTTS](https://modelscope.cn/models/IndexTeam/IndexTTS) |
-
-#### 📁 Model File Placement
-
-**重要说明**: 下载整个 IndexTTS-2 模型文件夹，并将其放入 `Models/TTS/` 目录中。
-
-```
-ComfyUI/
-└── Models/
-    └── TTS/
-        └── IndexTTS-2/          # 将下载的完整模型文件夹放在这里
-            ├── config.yaml
-            ├── model.pth
-            └── [其他模型文件...]
-```
-
-#### 🚀 Download Methods
+**⚠️ Models are required!** Please refer to the [� Model Download](#-model-download) section above for detailed instructions.
 
 ```bash
-# Automatic download (recommended)
+# Quick download (after plugin installation)
 python download_models.py
-
-# Alternative methods:
-# huggingface-cli download IndexTeam/IndexTTS-2 --local-dir=Models/TTS/IndexTTS-2
-# modelscope download --model IndexTeam/IndexTTS-2 --local_dir Models/TTS/IndexTTS-2
 ```
 
 ### Step 5: Verify Installation
