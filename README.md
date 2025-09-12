@@ -348,6 +348,70 @@ print('✅ Pynini test passed!')
 </details>
 
 <details>
+<summary><b>⚡ DeepSpeed 加速支持 (可选)</b></summary>
+
+**DeepSpeed** 是一个深度学习优化库，可以显著提升 IndexTTS2 的训练和推理性能，特别是在大模型和多GPU环境下。
+
+#### 🎯 DeepSpeed 的优势
+- 🚀 **显著加速** - 推理速度提升 2-5 倍
+- 💾 **内存优化** - 减少 GPU 内存使用
+- 🔧 **自动优化** - 智能模型并行和内存管理
+- 🎛️ **灵活配置** - 支持多种优化策略
+
+#### 🪟 Windows 安装方法
+
+**⚠️ 注意**: DeepSpeed 官方不直接支持 Windows，但社区提供了预编译轮子。
+
+**🔗 Windows 轮子下载地址**:
+[https://github.com/6Morpheus6/deepspeed-windows-wheels/releases](https://github.com/6Morpheus6/deepspeed-windows-wheels/releases)
+
+**安装步骤**:
+```bash
+# 1. 访问上述链接，选择适合您环境的轮子文件
+# 2. 下载对应的 .whl 文件
+# 3. 使用 pip 安装下载的轮子文件
+
+# 示例 (请根据实际下载的文件名调整):
+pip install deepspeed-0.12.6+cu118-cp311-cp311-win_amd64.whl
+```
+
+#### 📋 版本选择指南
+
+| Python 版本 | CUDA 版本 | 轮子文件示例 |
+|-------------|-----------|-------------|
+| **Python 3.10** | CUDA 11.8 | `deepspeed-*-cp310-cp310-win_amd64.whl` |
+| **Python 3.11** | CUDA 11.8 | `deepspeed-*-cp311-cp311-win_amd64.whl` |
+| **Python 3.12** | CUDA 11.8 | `deepspeed-*-cp312-cp312-win_amd64.whl` |
+
+**💡 选择提示**:
+- 检查您的 Python 版本: `python --version`
+- 检查您的 CUDA 版本: `nvidia-smi`
+- 选择匹配的轮子文件下载
+
+#### 🐧 Linux/macOS 安装
+```bash
+# Linux/macOS 用户可以直接使用官方版本
+pip install deepspeed
+```
+
+#### 🔍 验证安装
+```bash
+# 检查 DeepSpeed 是否正确安装
+python -c "import deepspeed; print('✅ DeepSpeed version:', deepspeed.__version__)"
+```
+
+#### ⚙️ 在 IndexTTS2 中使用
+DeepSpeed 安装后会自动被 IndexTTS2 检测和使用，无需额外配置。
+
+#### 💡 使用建议
+- **🎯 推荐场景**: 大模型推理、批量处理、多GPU环境
+- **⚠️ 注意事项**: 需要兼容的 CUDA 版本和足够的 GPU 内存
+- **🔧 故障排除**: 如果安装失败，可以跳过 DeepSpeed，基本功能不受影响
+- **📊 性能提升**: 在支持的硬件上可获得显著的速度提升
+
+</details>
+
+<details>
 <summary><b>🎵 Audio File Setup</b></summary>
 
 ### Smart Audio File Management
@@ -518,20 +582,62 @@ After installation, restart ComfyUI and look for **IndexTTS2** nodes in the node
 <details>
 <summary><b>🗣️ IndexTTS2 Multi-Talk</b></summary>
 
-**Perfect for**: Conversations, dialogues, classroom discussions
+**Perfect for**: Voice cloning, conversations, dialogues, classroom discussions
 
 **Features**:
-- ✅ 2-4 speaker support
+- ✅ 1-4 speaker support: 1=pure voice cloning, 2-4=conversation mode
 - ✅ Individual emotion control per speaker
-- ✅ Automatic conversation parsing
+- ✅ Automatic conversation parsing (multi-speaker mode)
 - ✅ Configurable silence intervals
 - ✅ Modular emotion configuration
 
 **Use Cases**:
-- Classroom discussions
-- Business meetings
-- Character dialogues
-- Podcast conversations
+- **Single Speaker**: Voice cloning, audiobooks, narration
+- **Multi-Speaker**: Classroom discussions, business meetings
+- **Character dialogues**: Theater, gaming, storytelling
+- **Podcast conversations**: Multi-host discussions
+
+</details>
+
+<details>
+<summary><b>🎵 IndexTTS2 Emotion Voice Multi-Talk (NEW!)</b></summary>
+
+**Perfect for**: Voice cloning, emotion-driven conversations, character role-play
+
+**Features**:
+- ✅ 1-4 speaker support: 1=pure voice cloning, 2-4=conversation mode
+- ✅ Direct audio input for emotion voice samples (no file paths needed!)
+- ✅ Smart text parsing with emotion markers `[Happy]` (multi-speaker mode)
+- ✅ Adjustable emotion intensity (0.0-2.0) per speaker
+- ✅ Multiple emotion modes: emotion_voice, emotion_vector, auto
+- ✅ High-performance synthesis with FP16/CUDA support
+
+**Text Format**:
+
+**Single Speaker Mode (num_speakers=1)**:
+```
+Hello everyone! This is a simple voice cloning example.
+You can add emotion through the emotion voice input.
+```
+
+**Multi-Speaker Mode (num_speakers=2-4)**:
+```
+Speaker1: [Happy] Hello everyone! How are you doing today?
+Speaker2: [Excited] I'm doing fantastic! Thanks for asking!
+Speaker3: [Calm] I'm well, thank you. It's nice to see everyone.
+```
+
+**Emotion Control**:
+- Connect audio loader nodes directly to emotion voice inputs
+- Adjust emotion intensity with alpha values (0.0-2.0)
+- Automatic emotion detection from text markers
+- No need to manually input file paths - just connect audio nodes!
+
+**Use Cases**:
+- **Single Speaker**: Voice cloning, audiobooks, narration, emotional speech
+- **Multi-Speaker**: Character role-playing, dramatic performances, theater
+- **Educational**: Classroom discussions with emotional context
+- **Entertainment**: Gaming, interactive storytelling, podcast creation
 
 </details>
 
@@ -989,6 +1095,46 @@ Features:
 <details>
 <summary><b>❌ Installation Issues</b></summary>
 
+### ❌ Transformers 兼容性错误
+
+**错误信息**: `cannot import name 'QuantizedCacheConfig' from 'transformers.cache_utils'`
+
+**原因**: transformers 库版本不兼容
+
+**解决方案**:
+```bash
+# 1. 检查兼容性和当前版本
+python check_transformers_compatibility.py
+
+# 2. 如果版本过旧，尝试升级
+pip install --upgrade transformers
+
+# 3. 如果版本过新，可能需要降级 (谨慎操作)
+# pip install transformers==4.36.2
+
+# 4. 重启 ComfyUI
+```
+
+### ❌ GenerationMode 属性错误
+
+**错误信息**: `'NoneType' object has no attribute 'ASSISTED_GENERATION'`
+
+**原因**: GenerationMode 类未正确导入
+
+**解决方案**:
+```bash
+# 1. 检查兼容性
+python check_transformers_compatibility.py
+
+# 2. 重启 ComfyUI (重要!)
+# 代码已包含兼容性处理，重启后应该正常工作
+```
+
+**💡 注意**:
+- 优先保持与 ComfyUI 环境兼容的 transformers 版本
+- 如果问题持续，代码已包含兼容性处理，基本功能不受影响
+- 重启 ComfyUI 可以解决大部分导入相关问题
+
 ### "No module named 'indextts'" Error
 ```bash
 # Solution 1: Install the package
@@ -1372,6 +1518,59 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 </td>
 </tr>
 </table>
+
+---
+
+## 🚀 开发与发布
+
+### GitHub Actions 工作流
+
+本项目包含完整的 CI/CD 流水线：
+
+#### 📋 **持续集成 (CI)**
+- **触发条件**: 推送到 main/develop 分支，Pull Request
+- **测试环境**: Ubuntu + Windows, Python 3.10/3.11
+- **检查内容**:
+  - ✅ Python 语法验证
+  - ✅ 依赖项安装测试
+  - ✅ 模块导入测试
+  - ✅ 代码格式检查 (black, flake8, isort)
+  - ✅ 安全扫描 (bandit, safety)
+  - ✅ JSON 工作流验证
+
+#### 🚀 **自动发布 (Publish)**
+- **触发条件**: 推送版本标签 (v*)，手动触发
+- **发布内容**:
+  - 📦 创建 GitHub Release
+  - 📄 自动生成 Changelog
+  - 🗜️ 打包源码 (tar.gz + zip)
+  - 📋 生成 ComfyUI Manager 提交信息
+
+### 🏷️ **发布新版本**
+
+1. **创建版本标签**:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+2. **自动发布流程**:
+   - GitHub Actions 自动构建和测试
+   - 创建 GitHub Release
+   - 生成下载包
+   - 通知 ComfyUI Manager
+
+3. **手动触发**:
+   - 访问 GitHub Actions 页面
+   - 选择 "Publish ComfyUI IndexTTS2" 工作流
+   - 点击 "Run workflow"
+
+### 🔧 **开发贡献**
+
+欢迎提交 Pull Request！请确保：
+- 代码通过所有 CI 检查
+- 遵循项目代码风格
+- 添加适当的测试和文档
 
 ---
 

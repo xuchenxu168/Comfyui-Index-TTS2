@@ -168,6 +168,7 @@ from .nodes.model_manager_node import IndexTTS2ModelManagerNode
 from .nodes.audio_utils_node import IndexTTS2AudioUtilsNode
 from .nodes.multi_talk_node import IndexTTS2MultiTalkNode
 from .nodes.speaker_emotion_config_node import IndexTTS2SpeakerEmotionConfigNode
+from .nodes.emotion_voice_multi_talk_node import IndexTTS2EmotionVoiceMultiTalkNode
 # 移除自定义音频加载节点，直接使用ComfyUI官方的"加载音频"节点
 
 
@@ -183,6 +184,7 @@ NODE_CLASS_MAPPINGS = {
     "IndexTTS2_AudioUtils": IndexTTS2AudioUtilsNode,
     "IndexTTS2_MultiTalk": IndexTTS2MultiTalkNode,
     "IndexTTS2_SpeakerEmotionConfig": IndexTTS2SpeakerEmotionConfigNode,
+    "IndexTTS2_EmotionVoiceMultiTalk": IndexTTS2EmotionVoiceMultiTalkNode,
     # 移除自定义音频加载节点
 }
 
@@ -197,6 +199,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "IndexTTS2_AudioUtils": "IndexTTS2 Audio Utils",
     "IndexTTS2_MultiTalk": "IndexTTS2 Multi-Talk with Emotion Control",
     "IndexTTS2_SpeakerEmotionConfig": "IndexTTS2 Speaker Emotion Config",
+    "IndexTTS2_EmotionVoiceMultiTalk": "IndexTTS2 Emotion Voice Multi-Talk",
     # 移除自定义音频加载节点
 }
 
@@ -205,5 +208,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 
 # 打印加载状态
-print("[IndexTTS2] ✓ 所有节点加载完成，包括多人对话情感控制节点")
-print("[IndexTTS2] ✓ All nodes loaded, including multi-talk emotion control node")
+print("[IndexTTS2] ✓ 所有节点加载完成，包括情绪语音多人对话节点")
+print("[IndexTTS2] ✓ All nodes loaded, including emotion voice multi-talk node")

@@ -68,6 +68,34 @@ modelscope>=1.27.0
 # pynini==2.1.6
 
 # ================================================================
+# 深度学习加速 (可选)
+# Deep Learning Acceleration (optional)
+# ================================================================
+
+# DeepSpeed 深度学习优化库 (可选，显著提升性能)
+# DeepSpeed deep learning optimization library (optional, significant performance boost)
+#
+# 🪟 Windows 用户注意：需要使用社区提供的轮子文件
+# 🪟 Windows users: Need to use community-provided wheel files
+#
+# Windows 轮子下载地址 / Windows wheels download:
+# https://github.com/6Morpheus6/deepspeed-windows-wheels/releases
+#
+# 安装方法 / Installation:
+# 1. 访问上述链接下载适合您 Python 版本的轮子文件
+# 2. pip install [下载的轮子文件名].whl
+#
+# Linux/macOS 用户可直接安装:
+# Linux/macOS users can install directly:
+# deepspeed>=0.12.0
+#
+# 功能：显著提升推理速度，优化内存使用
+# Function: Significantly improves inference speed, optimizes memory usage
+#
+# 如果安装失败，可以跳过，基本功能不受影响
+# If installation fails, you can skip it, basic functions are not affected
+
+# ================================================================
 # 安装说明 / Installation Notes
 # ================================================================
 # 1. 确保 ComfyUI 环境已正确安装

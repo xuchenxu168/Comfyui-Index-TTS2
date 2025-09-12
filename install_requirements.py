@@ -70,7 +70,7 @@ def check_pynini_needed():
     print("• 大多数用户不需要这些高级功能")
     print("• IndexTTS2 基本功能不依赖 pynini")
     print()
-    
+
     while True:
         choice = input("是否尝试安装 pynini? (y/n/skip): ").lower().strip()
         if choice in ['y', 'yes', '是']:
@@ -79,6 +79,67 @@ def check_pynini_needed():
             return False
         else:
             print("请输入 y (是) 或 n (否)")
+
+def check_deepspeed_needed():
+    """询问用户是否需要安装 DeepSpeed"""
+    print("\n" + "="*60)
+    print("⚡ 关于 DeepSpeed (性能加速)")
+    print("="*60)
+    print()
+    print("DeepSpeed 是一个深度学习优化库，可以：")
+    print("• 🚀 显著提升推理速度 (2-5倍)")
+    print("• 💾 优化 GPU 内存使用")
+    print("• 🔧 自动模型并行和内存管理")
+    print("• 🎛️ 支持多种优化策略")
+    print()
+    print("⚠️  注意：")
+    print("• Windows 需要使用社区轮子文件")
+    print("• 需要兼容的 CUDA 版本")
+    print("• 主要适用于大模型和多GPU环境")
+    print("• IndexTTS2 基本功能不依赖 DeepSpeed")
+    print()
+    print("🔗 Windows 轮子下载: https://github.com/6Morpheus6/deepspeed-windows-wheels/releases")
+    print()
+
+    while True:
+        choice = input("是否尝试安装 DeepSpeed? (y/n/skip): ").lower().strip()
+        if choice in ['y', 'yes', '是']:
+            return True
+        elif choice in ['n', 'no', '否', 'skip']:
+            return False
+        else:
+            print("请输入 y (是) 或 n (否)")
+
+def install_deepspeed():
+    """尝试安装 DeepSpeed"""
+    print("\n⚡ 尝试安装 DeepSpeed...")
+
+    # 检查是否已安装
+    try:
+        import deepspeed
+        print("✅ DeepSpeed 已安装")
+        return True
+    except ImportError:
+        pass
+
+    # Windows 系统提示手动安装
+    if platform.system() == "Windows":
+        print("🪟 检测到 Windows 系统")
+        print("💡 DeepSpeed 在 Windows 上需要手动安装轮子文件")
+        print("🔗 请访问: https://github.com/6Morpheus6/deepspeed-windows-wheels/releases")
+        print("📋 下载适合您 Python 版本的轮子文件，然后使用:")
+        print("   pip install [下载的轮子文件名].whl")
+        return False
+
+    # Linux/macOS 尝试直接安装
+    print("🐧 检测到 Linux/macOS 系统，尝试直接安装...")
+    cmd = [sys.executable, '-m', 'pip', 'install', 'deepspeed']
+    if run_command(cmd, "安装 DeepSpeed"):
+        return True
+
+    print("❌ DeepSpeed 安装失败")
+    print("💡 这是正常的，您仍然可以使用 IndexTTS2 的基本功能")
+    return False
 
 def install_pynini_with_wheel():
     """使用项目提供的轮子文件安装 pynini"""
@@ -184,6 +245,13 @@ def verify_installation():
         print("✅ pynini (可选)")
     except ImportError:
         print("⚠️  pynini (可选) - 未安装，基本功能不受影响")
+
+    # 检查 DeepSpeed (可选)
+    try:
+        import deepspeed
+        print("✅ DeepSpeed (可选)")
+    except ImportError:
+        print("⚠️  DeepSpeed (可选) - 未安装，基本功能不受影响")
     
     if failed_modules:
         print(f"\n❌ 安装验证失败，缺少模块: {', '.join(failed_modules)}")
@@ -209,6 +277,12 @@ def main():
         install_pynini()
     else:
         print("⏭️  跳过 pynini 安装")
+
+    # 询问是否安装 DeepSpeed
+    if check_deepspeed_needed():
+        install_deepspeed()
+    else:
+        print("⏭️  跳过 DeepSpeed 安装")
     
     # 验证安装
     if verify_installation():
