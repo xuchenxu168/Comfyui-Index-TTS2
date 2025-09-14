@@ -32,14 +32,29 @@ import torch.distributed as dist
 from torch import nn
 from torch.nn import functional as F
 
-from transformers.cache_utils import (
-    Cache,
-    DynamicCache,
-    EncoderDecoderCache,
-    OffloadedCache,
-    QuantizedCacheConfig,
-    StaticCache,
-)
+# Import cache utilities with compatibility handling
+try:
+    from transformers.cache_utils import (
+        Cache,
+        DynamicCache,
+        EncoderDecoderCache,
+        OffloadedCache,
+        StaticCache,
+    )
+    # Try to import QuantizedCacheConfig, but handle if it doesn't exist
+    try:
+        from transformers.cache_utils import QuantizedCacheConfig
+    except ImportError:
+        # QuantizedCacheConfig is not available in this transformers version
+        QuantizedCacheConfig = None
+except ImportError:
+    # Fallback for older transformers versions
+    Cache = None
+    DynamicCache = None
+    EncoderDecoderCache = None
+    OffloadedCache = None
+    StaticCache = None
+    QuantizedCacheConfig = None
 from transformers.configuration_utils import PretrainedConfig
 from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
 from transformers.integrations.fsdp import is_fsdp_managed_module
@@ -97,12 +112,25 @@ except ImportError:
 
         return tuple(cropped_past)
 
-from transformers.generation.configuration_utils import (
-    NEED_SETUP_CACHE_CLASSES_MAPPING,
-    QUANT_BACKEND_CLASSES_MAPPING,
-    GenerationConfig,
-    GenerationMode,
-)
+# Import generation configuration utilities with compatibility handling
+try:
+    from transformers.generation.configuration_utils import (
+        NEED_SETUP_CACHE_CLASSES_MAPPING,
+        GenerationConfig,
+        GenerationMode,
+    )
+    # Try to import QUANT_BACKEND_CLASSES_MAPPING, but handle if it doesn't exist
+    try:
+        from transformers.generation.configuration_utils import QUANT_BACKEND_CLASSES_MAPPING
+    except ImportError:
+        # QUANT_BACKEND_CLASSES_MAPPING is not available in this transformers version
+        QUANT_BACKEND_CLASSES_MAPPING = {}
+except ImportError:
+    # Fallback for older transformers versions
+    NEED_SETUP_CACHE_CLASSES_MAPPING = {}
+    QUANT_BACKEND_CLASSES_MAPPING = {}
+    GenerationConfig = None
+    GenerationMode = None
 from transformers.generation.logits_process import (
     EncoderNoRepeatNGramLogitsProcessor,
     EncoderRepetitionPenaltyLogitsProcessor,
@@ -1782,11 +1810,26 @@ class GenerationMixin:
                         "cache, please open an issue and tag @zucchini-nlp."
                     )
 
+                # Check if QuantizedCacheConfig is available
+                if QuantizedCacheConfig is None:
+                    raise ImportError(
+                        "QuantizedCacheConfig is not available in this transformers version. "
+                        "Please upgrade transformers or use a different cache implementation."
+                    )
+
                 cache_config = (
                     generation_config.cache_config
                     if generation_config.cache_config is not None
                     else QuantizedCacheConfig()
                 )
+
+                # Check if QUANT_BACKEND_CLASSES_MAPPING is available
+                if not QUANT_BACKEND_CLASSES_MAPPING:
+                    raise ImportError(
+                        "QUANT_BACKEND_CLASSES_MAPPING is not available in this transformers version. "
+                        "Please upgrade transformers or use a different cache implementation."
+                    )
+
                 cache_class = QUANT_BACKEND_CLASSES_MAPPING[cache_config.backend]
 
                 # if cache_config.backend == "quanto" and not (is_optimum_quanto_available() or is_quanto_available()):
@@ -2165,7 +2208,12 @@ class GenerationMixin:
         model_kwargs["use_cache"] = generation_config.use_cache
 
         # 10. go into different generation modes
-        if generation_mode == GenerationMode.ASSISTED_GENERATION:
+        # Check if GenerationMode is available (compatibility with different transformers versions)
+        if GenerationMode is None:
+            # Fallback to basic generation for older transformers versions
+            generation_mode = "sample"  # Default to sample mode
+
+        if GenerationMode is not None and generation_mode == GenerationMode.ASSISTED_GENERATION:
             if generation_config.num_return_sequences > 1:
                 raise ValueError(
                     "num_return_sequences has to be 1 when doing assisted generate, "
@@ -2207,7 +2255,7 @@ class GenerationMixin:
                 streamer=streamer,
                 **model_kwargs,
             )
-        elif generation_mode == GenerationMode.DOLA_GENERATION:
+        elif GenerationMode is not None and generation_mode == GenerationMode.DOLA_GENERATION:
             if self._is_stateful:
                 # DoLa decoding was not designed for stateful models, and would require some changes
                 raise ValueError(
@@ -2224,7 +2272,7 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-        elif generation_mode == GenerationMode.CONTRASTIVE_SEARCH:
+        elif GenerationMode is not None and generation_mode == GenerationMode.CONTRASTIVE_SEARCH:
             if not model_kwargs["use_cache"]:
                 raise ValueError("Contrastive search requires `use_cache=True`")
             if self._is_stateful:
@@ -2243,7 +2291,7 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-        elif generation_mode in (GenerationMode.SAMPLE, GenerationMode.GREEDY_SEARCH):
+        elif GenerationMode is not None and generation_mode in (GenerationMode.SAMPLE, GenerationMode.GREEDY_SEARCH):
             # 11. expand input_ids with `num_return_sequences` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids=input_ids,
@@ -2263,7 +2311,7 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-        elif generation_mode in (GenerationMode.BEAM_SAMPLE, GenerationMode.BEAM_SEARCH):
+        elif GenerationMode is not None and generation_mode in (GenerationMode.BEAM_SAMPLE, GenerationMode.BEAM_SEARCH):
             # 11. prepare beam search scorer
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
@@ -2294,7 +2342,7 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-        elif generation_mode == GenerationMode.GROUP_BEAM_SEARCH:
+        elif GenerationMode is not None and generation_mode == GenerationMode.GROUP_BEAM_SEARCH:
             # 11. prepare beam search scorer
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
@@ -2324,7 +2372,7 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-        elif generation_mode == GenerationMode.CONSTRAINED_BEAM_SEARCH:
+        elif GenerationMode is not None and generation_mode == GenerationMode.CONSTRAINED_BEAM_SEARCH:
             final_constraints = []
             if generation_config.constraints is not None:
                 final_constraints = generation_config.constraints
@@ -2391,6 +2439,25 @@ class GenerationMixin:
                 stopping_criteria=prepared_stopping_criteria,
                 generation_config=generation_config,
                 synced_gpus=synced_gpus,
+                **model_kwargs,
+            )
+        else:
+            # Fallback for when GenerationMode is None (compatibility mode)
+            # Default to sample generation
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids=input_ids,
+                expand_size=generation_config.num_return_sequences,
+                is_encoder_decoder=self.config.is_encoder_decoder,
+                **model_kwargs,
+            )
+            # 12. run sample
+            result = self._sample(
+                input_ids,
+                logits_processor=prepared_logits_processor,
+                stopping_criteria=prepared_stopping_criteria,
+                generation_config=generation_config,
+                synced_gpus=synced_gpus,
+                streamer=streamer,
                 **model_kwargs,
             )
 

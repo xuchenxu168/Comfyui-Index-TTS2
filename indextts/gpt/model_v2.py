@@ -4,14 +4,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import transformers
-from transformers import GPT2Config, LogitsProcessorList
-from indextts.gpt.transformers_gpt2 import GPT2PreTrainedModel, GPT2Model
-
-# from transformers import GPT2Config, GPT2PreTrainedModel, LogitsProcessorList
-from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
-from transformers.utils.model_parallel_utils import (assert_device_map,
-                                                     get_device_map)
+# 使用简化兼容层导入 transformers 组件
+from indextts.compat.simple_imports import (
+    GPT2Config,
+    GPT2PreTrainedModel,
+    GPT2Model,
+    LogitsProcessorList,
+    GenerationConfig,
+    GenerationMixin,
+    CausalLMOutputWithCrossAttentions,
+    assert_device_map,
+    get_device_map
+)
 
 from indextts.gpt.conformer_encoder import ConformerEncoder
 from indextts.gpt.perceiver import PerceiverResampler
@@ -42,7 +46,7 @@ class ResBlock(nn.Module):
         return F.relu(self.net(x) + x)
 
 
-class GPT2InferenceModel(GPT2PreTrainedModel):
+class GPT2InferenceModel(GPT2PreTrainedModel, GenerationMixin):
     def __init__(self, config, gpt, text_pos_emb, embeddings, norm, linear, kv_cache=False):
         super().__init__(config)
         # Note: the argument named `text_pos_emb` here actually represents the mel position embedding
@@ -89,8 +93,23 @@ class GPT2InferenceModel(GPT2PreTrainedModel):
 
     def prepare_inputs_for_generation(self, input_ids, past_key_values=None, **kwargs):
         token_type_ids = kwargs.get("token_type_ids", None)  # usually None
+
+        # 清理 past_key_values 以避免 DynamicCache 错误
+        if past_key_values is not None:
+            # 检查是否包含 None 值
+            has_none = False
+            for layer_past in past_key_values:
+                if layer_past is None or any(state is None for state in layer_past):
+                    has_none = True
+                    break
+
+            # 如果包含 None 值，禁用缓存
+            if has_none:
+                past_key_values = None
+
         if not self.kv_cache:
             past_key_values = None
+
         # only last token for inputs_ids if past is defined in kwargs
         if past_key_values:
             input_ids = input_ids[:, -1].unsqueeze(-1)
@@ -108,6 +127,7 @@ class GPT2InferenceModel(GPT2PreTrainedModel):
                 position_ids = position_ids[:, -1].unsqueeze(-1)
         else:
             position_ids = None
+
         return {
             "input_ids": input_ids,
             "past_key_values": past_key_values,
@@ -133,6 +153,8 @@ class GPT2InferenceModel(GPT2PreTrainedModel):
             output_attentions=None,
             output_hidden_states=None,
             return_dict=None,
+            cache_position=None,  # 兼容 transformers 4.46.2+ 的新参数
+            **kwargs  # 捕获所有其他可能的新参数
     ):
         assert self.cached_mel_emb is not None
         assert inputs_embeds is None  # Not supported by this inference model.
@@ -158,9 +180,32 @@ class GPT2InferenceModel(GPT2PreTrainedModel):
             emb = emb + self.text_pos_embedding.get_fixed_embedding(
                 attention_mask.shape[1] - mel_len, attention_mask.device
             )
+        # 清理 past_key_values 以避免 DynamicCache 错误
+        # 移除包含 None 的缓存状态，因为 transformers 4.46.2+ 的 DynamicCache 无法处理 None
+        cleaned_past_key_values = None
+        if past_key_values is not None:
+            cleaned_past_key_values = []
+            for layer_past in past_key_values:
+                if layer_past is not None:
+                    # 检查层内的状态是否都有效
+                    if all(state is not None for state in layer_past):
+                        cleaned_past_key_values.append(layer_past)
+                    else:
+                        # 如果层内有 None，跳过整个层
+                        break
+                else:
+                    # 如果遇到 None 层，停止使用缓存
+                    break
+
+            # 如果没有有效的缓存层，设置为 None
+            if not cleaned_past_key_values:
+                cleaned_past_key_values = None
+            else:
+                cleaned_past_key_values = tuple(cleaned_past_key_values)
+
         transformer_outputs = self.transformer(
             inputs_embeds=emb,
-            past_key_values=past_key_values,
+            past_key_values=cleaned_past_key_values,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
@@ -203,13 +248,40 @@ class GPT2InferenceModel(GPT2PreTrainedModel):
         :meth:`~transformers.PreTrainedModel.beam_search` or :meth:`~transformers.PreTrainedModel.beam_sample` is
         called. This is required to match :obj:`past_key_values` with the correct beam_idx at every generation step.
         """
-        return tuple(
-            tuple(
-                past_state.index_select(0, beam_idx.to(past_state.device))
-                for past_state in layer_past
-            )
-            for layer_past in past
-        )
+        if past is None:
+            return None
+
+        # 处理空的或无效的 past_key_values
+        if not past or len(past) == 0:
+            return past
+
+        reordered_past = []
+        for layer_past in past:
+            if layer_past is None:
+                reordered_past.append(None)
+                continue
+
+            reordered_layer = []
+            for past_state in layer_past:
+                if past_state is None:
+                    reordered_layer.append(None)
+                else:
+                    try:
+                        reordered_state = past_state.index_select(0, beam_idx.to(past_state.device))
+                        reordered_layer.append(reordered_state)
+                    except Exception as e:
+                        print(f"[IndexTTS2] Warning: Failed to reorder cache state: {e}")
+                        reordered_layer.append(past_state)  # 保持原状态
+
+            reordered_past.append(tuple(reordered_layer))
+
+        return tuple(reordered_past)
+
+    def can_generate(self):
+        """
+        Returns whether this model can generate sequences with `.generate()`.
+        """
+        return True
 
 
 class ConditioningEncoder(nn.Module):
@@ -259,7 +331,7 @@ def build_hf_gpt_transformer(layers, model_dim, heads, max_mel_seq_len, max_text
     """
     GPT-2 implemented by the HuggingFace library.
     """
-    from transformers import GPT2Config, GPT2Model
+    # 使用兼容层获取 GPT2 组件（已在文件顶部导入）
     gpt_config = GPT2Config(vocab_size=256,  # Unused.
                             n_positions=max_mel_seq_len + max_text_seq_len,
                             n_ctx=max_mel_seq_len + max_text_seq_len,
