@@ -26,8 +26,8 @@ rule cuda_compile
 rule link
   command = "C$:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64/link.exe" $in /nologo $ldflags /out:$out
 
-build anti_alias_activation.o: compile D$:\Ken_ComfyUI_312\ComfyUI\custom_nodes\comfyui-index-tts2\indextts\BigVGAN\alias_free_activation\cuda\anti_alias_activation.cpp
-build anti_alias_activation_cuda.cuda.o: cuda_compile D$:\Ken_ComfyUI_312\ComfyUI\custom_nodes\comfyui-index-tts2\indextts\BigVGAN\alias_free_activation\cuda\anti_alias_activation_cuda.cu
+build anti_alias_activation.o: compile D$:\Ken_ComfyUI_312\ComfyUI\custom_nodes\comfyui-Index-TTS2\indextts\BigVGAN\alias_free_activation\cuda\anti_alias_activation.cpp
+build anti_alias_activation_cuda.cuda.o: cuda_compile D$:\Ken_ComfyUI_312\ComfyUI\custom_nodes\comfyui-Index-TTS2\indextts\BigVGAN\alias_free_activation\cuda\anti_alias_activation_cuda.cu
 
 
 
