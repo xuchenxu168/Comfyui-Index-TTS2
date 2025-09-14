@@ -91,29 +91,72 @@ class TextNormalizer:
         import platform
         if self.zh_normalizer is not None and self.en_normalizer is not None:
             return
-        if platform.system() == "Darwin":
-            from wetext import Normalizer
 
-            self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
-            self.en_normalizer = Normalizer(lang="en", operator="tn")
-        else:
-            from tn.chinese.normalizer import Normalizer as NormalizerZh
-            from tn.english.normalizer import Normalizer as NormalizerEn
-            # use new cache dir for build tagger rules with disable remove_interjections and remove_erhua
-            cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tagger_cache")
-            if not os.path.exists(cache_dir):
-                os.makedirs(cache_dir)
-                with open(os.path.join(cache_dir, ".gitignore"), "w") as f:
-                    f.write("*\n")
-            self.zh_normalizer = NormalizerZh(
-                cache_dir=cache_dir, remove_interjections=False, remove_erhua=False, overwrite_cache=False
-            )
-            self.en_normalizer = NormalizerEn(overwrite_cache=False)
+        # Try to load text normalizers with fallback
+        try:
+            # Try wetext first (no pynini dependency, works on all platforms)
+            try:
+                from wetext import Normalizer
+                self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
+                self.en_normalizer = Normalizer(lang="en", operator="tn")
+                print("✅ Using wetext for text normalization (no pynini required)")
+                return
+            except ImportError:
+                pass
+
+            # Try WeTextProcessing (requires pynini)
+            if platform.system() == "Darwin":
+                from wetext import Normalizer
+                self.zh_normalizer = Normalizer(remove_erhua=False, lang="zh", operator="tn")
+                self.en_normalizer = Normalizer(lang="en", operator="tn")
+                print("✅ Using wetext for text normalization (macOS)")
+            else:
+                from tn.chinese.normalizer import Normalizer as NormalizerZh
+                from tn.english.normalizer import Normalizer as NormalizerEn
+                # use new cache dir for build tagger rules with disable remove_interjections and remove_erhua
+                cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tagger_cache")
+                if not os.path.exists(cache_dir):
+                    os.makedirs(cache_dir)
+                    with open(os.path.join(cache_dir, ".gitignore"), "w") as f:
+                        f.write("*\n")
+                self.zh_normalizer = NormalizerZh(
+                    cache_dir=cache_dir, remove_interjections=False, remove_erhua=False, overwrite_cache=False
+                )
+                self.en_normalizer = NormalizerEn(overwrite_cache=False)
+                print("✅ Using WeTextProcessing for text normalization")
+        except ImportError as e:
+            print(f"Warning: Text normalizer not available ({e}). Using basic text processing.")
+            print("For better text normalization, install WeTextProcessing:")
+            print("  pip install WeTextProcessing")
+            # Create dummy normalizers that just return the input text
+            self.zh_normalizer = self._create_dummy_normalizer()
+            self.en_normalizer = self._create_dummy_normalizer()
+        except Exception as e:
+            print(f"Warning: Text normalizer initialization failed ({e}). Using basic text processing.")
+            self.zh_normalizer = self._create_dummy_normalizer()
+            self.en_normalizer = self._create_dummy_normalizer()
+
+    def _create_dummy_normalizer(self):
+        """创建一个简单的文本标准化器，用于在 WeTextProcessing 不可用时的回退"""
+        class DummyNormalizer:
+            def normalize(self, text):
+                # 基本的文本清理
+                import re
+                # 替换一些常见的符号
+                text = re.sub(r'["""]', '"', text)
+                text = re.sub(r"[''']", "'", text)
+                text = re.sub(r'[…]', '...', text)
+                text = re.sub(r'[—–]', '-', text)
+                # 标准化空白字符
+                text = re.sub(r'\s+', ' ', text)
+                text = text.strip()
+                return text
+        return DummyNormalizer()
 
     def normalize(self, text: str) -> str:
         if not self.zh_normalizer or not self.en_normalizer:
             print("Error, text normalizer is not initialized !!!")
-            return ""
+            return text  # Return original text instead of empty string
         if self.use_chinese(text):
             text = re.sub(TextNormalizer.ENGLISH_CONTRACTION_PATTERN, r"\1 is", text, flags=re.IGNORECASE)
             replaced_text, pinyin_list = self.save_pinyin_tones(text.rstrip())
