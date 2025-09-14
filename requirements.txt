@@ -40,7 +40,7 @@ numba>=0.51.0
 # 模型下载和处理 (IndexTTS2 必需)
 # Model download and processing (required for IndexTTS2)
 modelscope>=1.27.0
-transformers>=4.36.0
+transformers==4.36.2  # 锁定兼容版本，避免 Qwen3 等新模型架构兼容性问题
 tokenizers>=0.15.0
 accelerate>=0.25.0
 safetensors>=0.4.0

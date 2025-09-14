@@ -12,7 +12,7 @@
 
 *Breakthrough emotionally expressive and duration-controlled autoregressive zero-shot text-to-speech synthesis*
 
-[🚀 Model Download](#-model-download) • [📦 Installation](#-installation) • [🎯 Quick Start](#-quick-start) • [🎨 Features](#-features) • [📚 Documentation](#-documentation)
+[⚡ Quick Start](#-30-second-quick-start) • [🚀 Model Download](#-model-download) • [📦 Installation](#-installation) • [🎨 Features](#-features) • [📚 Documentation](#-documentation)
 
 </div>
 
@@ -76,7 +76,34 @@
 - **🧠 GPT Latent Integration**: Enhanced stability and naturalness
 - **🎛️ Professional Control**: Prosody, timing, and emotion fine-tuning
 
-## � Model Download
+## ⚡ 30-Second Quick Start
+
+<div align="center">
+
+### 🚀 **Get Started in 3 Steps!**
+
+</div>
+
+```bash
+# 1. Clone the plugin
+cd ComfyUI/custom_nodes
+git clone https://github.com/your-repo/comfyui-index-tts2.git
+cd comfyui-index-tts2
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Download models
+python download_models.py
+```
+
+**That's it!** 🎉 Restart ComfyUI and find IndexTTS2 nodes in the node menu.
+
+**First time?** Try the `workflow-examples/super_simple_2speaker.json` for a quick demo!
+
+---
+
+## 🚀 Model Download
 
 <div align="center">
 
@@ -169,7 +196,7 @@ ls ComfyUI/Models/TTS/IndexTTS-2/
 
 ---
 
-## �📦 Installation
+## 📦 Installation
 
 <details>
 <summary><b>🚀 Quick Installation (Recommended)</b></summary>
@@ -283,9 +310,33 @@ pip install -r requirements.txt
 **Common Missing Dependencies:**
 - `descript-audiotools` - Required for audio processing (imports as `audiotools`)
 - `json5` - Required for configuration files
-- `transformers` - Required for model loading
+- `transformers==4.36.2` - Required for model loading (version locked for compatibility)
 - `einops` - Required for tensor operations
 - `WeTextProcessing` - Optional for better text normalization (may fail on Windows)
+
+### ⚠️ **Transformers Compatibility Issue**
+
+**Problem**: If you encounter errors like `ImportError: cannot import name 'XXX' from 'transformers'` or model loading failures, this is likely due to transformers version incompatibility.
+
+**🛡️ Built-in Solution**: IndexTTS2 includes a **complete compatibility layer** that automatically handles version differences:
+
+```bash
+# Test the compatibility layer
+python test_compatibility_layer.py
+
+# Auto-fix any remaining issues
+python fix_transformers_compatibility.py
+```
+
+**How it works**:
+- **Automatic Detection**: Detects your transformers version and compatibility
+- **Smart Fallback**: Uses built-in compatible components when needed
+- **Zero Configuration**: Works automatically without user intervention
+- **Version Independent**: Supports transformers 4.35.0 to 4.45.0+
+
+**Why this happens**: Newer transformers versions (4.41+) include Qwen3 and other new model architectures that may conflict with IndexTTS2's custom GPT2 implementation.
+
+**Our solution**: IndexTTS2 includes a **built-in compatibility layer** (`indextts/compat/`) that automatically handles all version differences, ensuring compatibility with any transformers version.
 
 **Quick Fix for Missing Dependencies:**
 ```bash
