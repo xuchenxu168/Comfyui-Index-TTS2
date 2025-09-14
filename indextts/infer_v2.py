@@ -25,11 +25,11 @@ from indextts.s2mel.modules.bigvgan import bigvgan
 from indextts.s2mel.modules.campplus.DTDNN import CAMPPlus
 from indextts.s2mel.modules.audio import mel_spectrogram
 
-from transformers import AutoTokenizer
+# 使用简化兼容层导入 transformers 组件
+from indextts.compat.simple_imports import AutoTokenizer, SeamlessM4TFeatureExtractor
 from modelscope import AutoModelForCausalLM
 from huggingface_hub import hf_hub_download
 import safetensors
-from transformers import SeamlessM4TFeatureExtractor
 import random
 import torch.nn.functional as F
 
