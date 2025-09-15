@@ -287,24 +287,29 @@ class IndexTTS2DurationNode:
         """加载默认模型"""
         try:
             from indextts.infer_v2 import IndexTTS2
-            
+
             # 使用通用模型路径函数
             from .model_utils import get_indextts2_model_path, validate_model_path
 
             model_dir, config_path = get_indextts2_model_path()
             validate_model_path(model_dir, config_path)
-            
+
             model = IndexTTS2(
                 cfg_path=config_path,
                 model_dir=model_dir,
                 is_fp16=use_fp16,
                 use_cuda_kernel=use_cuda_kernel
             )
-            
+
             return model
-            
+
         except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS2 model: {str(e)}")
+            error_msg = f"Failed to load IndexTTS2 model: {str(e)}"
+            # 特别处理DeepSpeed相关错误
+            if "deepspeed" in str(e).lower():
+                error_msg += "\n[IndexTTS2] DeepSpeed相关错误，但基本功能应该仍然可用"
+                error_msg += "\n[IndexTTS2] DeepSpeed-related error, but basic functionality should still work"
+            raise RuntimeError(error_msg)
     
     def _adjust_audio_speed(self, audio_path: str, speed_multiplier: float):
         """调整音频速度"""

@@ -34,9 +34,8 @@ class IndexTTS2SpeakerEmotionConfigNode:
                 }),
             },
             "optional": {
-                "emotion_audio": ("STRING", {
-                    "default": "",
-                    "placeholder": "情感音频文件路径 / Emotion audio file path"
+                "emotion_audio": ("AUDIO", {
+                    "tooltip": "连接音频加载节点以提供情感参考音频 / Connect audio loading node for emotion reference audio"
                 }),
                 "emotion_alpha": ("FLOAT", {
                     "default": 1.0,
@@ -133,7 +132,7 @@ class IndexTTS2SpeakerEmotionConfigNode:
         self,
         speaker_name: str,
         emotion_mode: str,
-        emotion_audio: str = "",
+        emotion_audio: Optional[dict] = None,
         emotion_alpha: float = 1.0,
         happy: float = 0.0,
         angry: float = 0.0,
@@ -153,18 +152,23 @@ class IndexTTS2SpeakerEmotionConfigNode:
         try:
             # 创建情感向量
             emotion_vector = [happy, angry, sad, fear, hate, low, surprise, neutral]
-            
+
             # 检查情感向量是否全为零
             max_emotion_value = max(emotion_vector)
             if max_emotion_value == 0.0 and emotion_mode == "emotion_vector":
                 # 当所有情感值都为0时，设置一个小的中性情感值
                 emotion_vector[7] = 0.1  # 设置Neutral为0.1
-            
+
+            # 处理情感音频
+            emotion_audio_info = None
+            if emotion_audio is not None:
+                emotion_audio_info = self._process_emotion_audio(emotion_audio)
+
             # 创建情感配置字典
             emotion_config = {
                 "speaker_name": speaker_name.strip() or "Speaker1",
                 "mode": emotion_mode,
-                "audio": emotion_audio.strip(),
+                "audio": emotion_audio_info,  # 现在存储AUDIO对象信息而不是路径
                 "alpha": emotion_alpha,
                 "vector": emotion_vector,
                 "text": emotion_text.strip(),
@@ -184,7 +188,7 @@ class IndexTTS2SpeakerEmotionConfigNode:
             default_config = {
                 "speaker_name": speaker_name or "Speaker1",
                 "mode": "inherit",
-                "audio": "",
+                "audio": None,
                 "alpha": 1.0,
                 "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
                 "text": "",
@@ -208,10 +212,12 @@ class IndexTTS2SpeakerEmotionConfigNode:
         mode = emotion_config['mode']
         
         if mode == "audio_prompt":
-            audio = emotion_config['audio']
+            audio_info = emotion_config['audio']
             alpha = emotion_config['alpha']
-            if audio:
-                info_lines.append(f"Audio: {os.path.basename(audio)}")
+            if audio_info and isinstance(audio_info, dict):
+                duration = audio_info.get('duration', 0)
+                sample_rate = audio_info.get('sample_rate', 0)
+                info_lines.append(f"Audio: {duration:.2f}s @ {sample_rate}Hz")
                 info_lines.append(f"Alpha: {alpha}")
             else:
                 info_lines.append("Audio: Not specified")
@@ -247,6 +253,46 @@ class IndexTTS2SpeakerEmotionConfigNode:
             info_lines.append("Will use automatic emotion detection")
         
         return "\n".join(info_lines)
+
+    def _process_emotion_audio(self, emotion_audio: dict) -> Optional[dict]:
+        """处理ComfyUI AUDIO对象，返回音频信息"""
+        try:
+            if not isinstance(emotion_audio, dict) or "waveform" not in emotion_audio or "sample_rate" not in emotion_audio:
+                print("[SpeakerEmotionConfig] Invalid emotion audio object")
+                return None
+
+            waveform = emotion_audio["waveform"]
+            sample_rate = emotion_audio["sample_rate"]
+
+            # 计算音频基本信息
+            if waveform.dim() == 3:
+                # [batch, channels, samples]
+                duration = waveform.shape[2] / sample_rate
+                channels = waveform.shape[1]
+            elif waveform.dim() == 2:
+                # [channels, samples]
+                duration = waveform.shape[1] / sample_rate
+                channels = waveform.shape[0]
+            else:
+                # [samples]
+                duration = waveform.shape[0] / sample_rate
+                channels = 1
+
+            # 返回音频信息和原始AUDIO对象
+            audio_info = {
+                "audio_object": emotion_audio,  # 保存原始AUDIO对象供后续使用
+                "sample_rate": sample_rate,
+                "duration": duration,
+                "channels": channels,
+                "shape": list(waveform.shape)
+            }
+
+            print(f"[SpeakerEmotionConfig] Processed emotion audio: {duration:.2f}s, {sample_rate}Hz, {channels}ch")
+            return audio_info
+
+        except Exception as e:
+            print(f"[SpeakerEmotionConfig] Failed to process emotion audio: {str(e)}")
+            return None
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

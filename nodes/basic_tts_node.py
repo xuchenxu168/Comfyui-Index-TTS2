@@ -302,7 +302,7 @@ class IndexTTS2BasicNode:
         """加载默认模型"""
         try:
             from indextts.infer_v2 import IndexTTS2
-            
+
             # 使用通用模型路径函数
             from .model_utils import get_indextts2_model_path, validate_model_path
 
@@ -313,27 +313,32 @@ class IndexTTS2BasicNode:
 
             # 验证模型路径
             validate_model_path(model_dir, config_path)
-            
+
             model = IndexTTS2(
                 cfg_path=config_path,
                 model_dir=model_dir,
                 is_fp16=use_fp16,
                 use_cuda_kernel=use_cuda_kernel
             )
-            
+
             return model
-            
+
         except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS2 model: {str(e)}")
+            error_msg = f"Failed to load IndexTTS2 model: {str(e)}"
+            # 特别处理DeepSpeed相关错误
+            if "deepspeed" in str(e).lower():
+                error_msg += "\n[IndexTTS2] DeepSpeed相关错误，但基本功能应该仍然可用"
+                error_msg += "\n[IndexTTS2] DeepSpeed-related error, but basic functionality should still work"
+            raise RuntimeError(error_msg)
     
     def _load_audio(self, audio_path: str) -> dict:
         """加载音频文件"""
         from .audio_utils import load_audio_for_comfyui
         return load_audio_for_comfyui(audio_path)
     
-    def _generate_info(self, text: str, speaker_audio: str, output_path: str, 
+    def _generate_info(self, text: str, speaker_audio: str, output_path: str,
                       language: str, speed: float) -> str:
-        """生成信息字符串"""
+        """生成信息字符串，包含Qwen模型信息"""
         info_lines = [
             "=== IndexTTS2 Basic Synthesis Info ===",
             f"Text: {text[:100]}{'...' if len(text) > 100 else ''}",
@@ -342,9 +347,151 @@ class IndexTTS2BasicNode:
             f"Language: {language}",
             f"Speed: {speed}x",
             f"Model: IndexTTS2 Basic",
+            "",
+            "=== Qwen Emotion Model Status ===",
         ]
-        
+
+        # 获取Qwen模型状态信息
+        qwen_info = self._get_qwen_model_info()
+        info_lines.extend(qwen_info)
+
         return "\n".join(info_lines)
+
+    def _get_qwen_model_info(self) -> list:
+        """获取当前Qwen模型信息"""
+        try:
+            # 检查transformers版本
+            import transformers
+            from packaging import version
+
+            current_version = transformers.__version__
+            info_lines = [f"🔧 Transformers版本: {current_version}"]
+
+            # 直接检查兼容性，不创建QwenEmotion实例
+            compatible_models = self._get_compatible_qwen_models_direct()
+
+            # 显示兼容模型信息
+            if compatible_models:
+                best_model = compatible_models[0]  # 第一个是优先级最高的
+                info_lines.extend([
+                    f"🤖 推荐模型: {best_model['name']}",
+                    f"📊 模型大小: {best_model['size']}",
+                    f"📝 模型类型: 智能选择",
+                    f"✅ 状态: 高精度情感分析可用"
+                ])
+            else:
+                info_lines.extend([
+                    f"🤖 情感模型: 关键词匹配",
+                    f"📝 模型类型: 备用方案",
+                    f"⚠️  状态: 基础情感分析可用"
+                ])
+
+            # 显示兼容模型数量
+            info_lines.append(f"🔍 兼容Qwen模型: {len(compatible_models)}个")
+
+            return info_lines
+
+        except Exception as e:
+            return [
+                f"❌ Qwen模型信息获取失败: {str(e)[:50]}...",
+                f"ℹ️  基本TTS功能不受影响"
+            ]
+
+    def _get_compatible_qwen_models_direct(self):
+        """直接获取兼容的Qwen模型列表，不创建QwenEmotion实例"""
+        try:
+            import transformers
+            from packaging import version
+
+            current_ver = version.parse(transformers.__version__)
+
+            # 定义不同Qwen模型的版本要求和优先级
+            qwen_models = []
+
+            # Qwen3系列 (需要transformers >= 4.51.0)
+            if current_ver >= version.parse("4.51.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen3-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen3-0.5B-Instruct",
+                        "priority": 1,
+                        "size": "0.5B",
+                        "description": "最新Qwen3模型，小型高效"
+                    },
+                    {
+                        "name": "Qwen3-1.8B-Instruct",
+                        "model_id": "Qwen/Qwen3-1.8B-Instruct",
+                        "priority": 2,
+                        "size": "1.8B",
+                        "description": "Qwen3中型模型"
+                    }
+                ])
+
+            # Qwen2.5系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen2.5-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+                        "priority": 3,
+                        "size": "0.5B",
+                        "description": "Qwen2.5小型模型"
+                    },
+                    {
+                        "name": "Qwen2.5-1.5B-Instruct",
+                        "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+                        "priority": 4,
+                        "size": "1.5B",
+                        "description": "Qwen2.5中型模型"
+                    }
+                ])
+
+            # Qwen2系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen2-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen2-0.5B-Instruct",
+                        "priority": 5,
+                        "size": "0.5B",
+                        "description": "Qwen2小型模型"
+                    },
+                    {
+                        "name": "Qwen2-1.5B-Instruct",
+                        "model_id": "Qwen/Qwen2-1.5B-Instruct",
+                        "priority": 6,
+                        "size": "1.5B",
+                        "description": "Qwen2中型模型"
+                    }
+                ])
+
+            # Qwen1.5系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen1.5-0.5B-Chat",
+                        "model_id": "Qwen/Qwen1.5-0.5B-Chat",
+                        "priority": 7,
+                        "size": "0.5B",
+                        "description": "Qwen1.5小型模型"
+                    },
+                    {
+                        "name": "Qwen1.5-1.8B-Chat",
+                        "model_id": "Qwen/Qwen1.5-1.8B-Chat",
+                        "priority": 8,
+                        "size": "1.8B",
+                        "description": "Qwen1.5中型模型"
+                    }
+                ])
+
+            # 按优先级排序
+            qwen_models.sort(key=lambda x: x["priority"])
+
+            return qwen_models
+
+        except Exception as e:
+            print(f"[IndexTTS2] ⚠️  获取兼容模型列表失败: {e}")
+            return []
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

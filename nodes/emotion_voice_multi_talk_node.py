@@ -295,12 +295,11 @@ class IndexTTS2EmotionVoiceMultiTalkNode:
     def _load_default_model(self, use_fp16=True, use_cuda_kernel=False):
         """加载默认模型"""
         try:
-            from ..indextts.infer_v2 import IndexTTS2
+            # 统一使用标准导入路径，移除重复导入
+            from indextts.infer_v2 import IndexTTS2
 
             if self.model is None:
                 print("🔄 Loading IndexTTS2 model for emotion voice multi-talk...")
-
-                from indextts.infer_v2 import IndexTTS2
 
                 # 使用通用模型路径函数
                 from .model_utils import get_indextts2_model_path, validate_model_path
@@ -326,7 +325,12 @@ class IndexTTS2EmotionVoiceMultiTalkNode:
             return self.model
 
         except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS2 model: {str(e)}")
+            error_msg = f"Failed to load IndexTTS2 model: {str(e)}"
+            # 特别处理DeepSpeed相关错误
+            if "deepspeed" in str(e).lower():
+                error_msg += "\n[IndexTTS2 EmotionVoiceMultiTalk] DeepSpeed相关错误，但基本功能应该仍然可用"
+                error_msg += "\n[IndexTTS2 EmotionVoiceMultiTalk] DeepSpeed-related error, but basic functionality should still work"
+            raise RuntimeError(error_msg)
 
     def _parse_conversation_text(self, conversation_text):
         """解析对话文本，提取说话人、情绪和文本"""

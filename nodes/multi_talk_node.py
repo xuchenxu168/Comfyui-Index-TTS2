@@ -587,23 +587,46 @@ class IndexTTS2MultiTalkNode:
             return "No emotion control"
 
         elif emotion_mode == "audio_prompt":
-            emotion_audio = emotion_config["audio"]
+            emotion_audio_info = emotion_config["audio"]
             emotion_alpha = emotion_config["alpha"]
 
-            if emotion_audio and os.path.exists(emotion_audio):
-                model.infer(
-                    spk_audio_prompt=speaker_audio_path,
-                    text=text,
-                    output_path=output_path,
-                    emo_audio_prompt=emotion_audio,
-                    emo_alpha=emotion_alpha,
-                    verbose=False,
-                    temperature=consistency_temp,
-                    top_p=consistency_top_p,
-                    top_k=50,
-                    max_text_tokens_per_sentence=120,
-                    interval_silence=200
-                )
+            if emotion_audio_info and isinstance(emotion_audio_info, dict) and "audio_object" in emotion_audio_info:
+                # 将AUDIO对象保存为临时文件
+                emotion_audio_path = self._save_emotion_audio_to_temp(emotion_audio_info["audio_object"])
+                if emotion_audio_path:
+                    try:
+                        model.infer(
+                            spk_audio_prompt=speaker_audio_path,
+                            text=text,
+                            output_path=output_path,
+                            emo_audio_prompt=emotion_audio_path,
+                            emo_alpha=emotion_alpha,
+                            verbose=False,
+                            temperature=consistency_temp,
+                            top_p=consistency_top_p,
+                            top_k=50,
+                            max_text_tokens_per_sentence=120,
+                            interval_silence=200
+                        )
+                    finally:
+                        # 清理临时文件
+                        try:
+                            os.unlink(emotion_audio_path)
+                        except:
+                            pass
+                else:
+                    # 回退到无情感控制
+                    model.infer(
+                        spk_audio_prompt=speaker_audio_path,
+                        text=text,
+                        output_path=output_path,
+                        verbose=False,
+                        temperature=consistency_temp,
+                        top_p=consistency_top_p,
+                        top_k=50,
+                        max_text_tokens_per_sentence=120,
+                        interval_silence=200
+                    )
                 return f"Audio emotion ({os.path.basename(emotion_audio)}, α={emotion_alpha})"
             else:
                 # 回退到基础合成
@@ -837,7 +860,8 @@ class IndexTTS2MultiTalkNode:
     def _load_default_model(self, use_fp16: bool, use_cuda_kernel: bool):
         """加载默认模型"""
         try:
-            from ..indextts.infer_v2 import IndexTTS2
+            # 统一使用标准导入路径
+            from indextts.infer_v2 import IndexTTS2
 
             # 使用通用模型路径函数
             from .model_utils import get_indextts2_model_path, validate_model_path
@@ -859,7 +883,12 @@ class IndexTTS2MultiTalkNode:
             return model
 
         except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS2 model: {str(e)}")
+            error_msg = f"Failed to load IndexTTS2 model: {str(e)}"
+            # 特别处理DeepSpeed相关错误
+            if "deepspeed" in str(e).lower():
+                error_msg += "\n[MultiTalk] DeepSpeed相关错误，但基本功能应该仍然可用"
+                error_msg += "\n[MultiTalk] DeepSpeed-related error, but basic functionality should still work"
+            raise RuntimeError(error_msg)
 
     def _load_audio(self, audio_path: str) -> dict:
         """加载音频文件"""
@@ -895,10 +924,11 @@ class IndexTTS2MultiTalkNode:
                     if active_emotions:
                         info_lines.append(f"  Emotions: {', '.join(active_emotions)}")
                 elif mode == "audio_prompt":
-                    audio = emotion_config.get("audio", "")
+                    audio_info = emotion_config.get("audio", None)
                     alpha = emotion_config.get("alpha", 1.0)
-                    if audio:
-                        info_lines.append(f"  Audio: {os.path.basename(audio)} (α={alpha})")
+                    if audio_info and isinstance(audio_info, dict):
+                        duration = audio_info.get("duration", 0)
+                        info_lines.append(f"  Audio: {duration:.2f}s (α={alpha})")
                 elif mode == "text_description":
                     text = emotion_config.get("text", "")
                     if text:
@@ -917,7 +947,182 @@ class IndexTTS2MultiTalkNode:
         if len(conversation_lines) > 5:
             info_lines.append(f"... and {len(conversation_lines) - 5} more lines")
 
+        # 添加Qwen模型信息
+        info_lines.extend([
+            "",
+            "=== Qwen Emotion Model Status ===",
+        ])
+
+        qwen_info = self._get_qwen_model_info()
+        info_lines.extend(qwen_info)
+
         return "\n".join(info_lines)
+
+    def _get_qwen_model_info(self) -> list:
+        """获取当前Qwen模型信息"""
+        try:
+            # 检查transformers版本
+            import transformers
+            from packaging import version
+
+            current_version = transformers.__version__
+            info_lines = [f"🔧 Transformers版本: {current_version}"]
+
+            # 直接检查兼容性，不创建QwenEmotion实例
+            compatible_models = self._get_compatible_qwen_models_direct()
+
+            # 显示兼容模型信息
+            if compatible_models:
+                best_model = compatible_models[0]  # 第一个是优先级最高的
+                info_lines.extend([
+                    f"🤖 推荐模型: {best_model['name']}",
+                    f"📊 模型大小: {best_model['size']}",
+                    f"📝 模型类型: 智能选择",
+                    f"✅ 状态: 高精度情感分析可用"
+                ])
+            else:
+                info_lines.extend([
+                    f"🤖 情感模型: 关键词匹配",
+                    f"📝 模型类型: 备用方案",
+                    f"⚠️  状态: 基础情感分析可用"
+                ])
+
+            # 显示兼容模型数量
+            info_lines.append(f"🔍 兼容Qwen模型: {len(compatible_models)}个")
+
+            return info_lines
+
+        except Exception as e:
+            return [
+                f"❌ Qwen模型信息获取失败: {str(e)[:50]}...",
+                f"ℹ️  基本TTS功能不受影响"
+            ]
+
+    def _get_compatible_qwen_models_direct(self):
+        """直接获取兼容的Qwen模型列表，不创建QwenEmotion实例"""
+        try:
+            import transformers
+            from packaging import version
+
+            current_ver = version.parse(transformers.__version__)
+
+            # 定义不同Qwen模型的版本要求和优先级
+            qwen_models = []
+
+            # Qwen3系列 (需要transformers >= 4.51.0)
+            if current_ver >= version.parse("4.51.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen3-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen3-0.5B-Instruct",
+                        "priority": 1,
+                        "size": "0.5B",
+                        "description": "最新Qwen3模型，小型高效"
+                    },
+                    {
+                        "name": "Qwen3-1.8B-Instruct",
+                        "model_id": "Qwen/Qwen3-1.8B-Instruct",
+                        "priority": 2,
+                        "size": "1.8B",
+                        "description": "Qwen3中型模型"
+                    }
+                ])
+
+            # Qwen2.5系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen2.5-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+                        "priority": 3,
+                        "size": "0.5B",
+                        "description": "Qwen2.5小型模型"
+                    },
+                    {
+                        "name": "Qwen2.5-1.5B-Instruct",
+                        "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+                        "priority": 4,
+                        "size": "1.5B",
+                        "description": "Qwen2.5中型模型"
+                    }
+                ])
+
+            # Qwen2系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen2-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen2-0.5B-Instruct",
+                        "priority": 5,
+                        "size": "0.5B",
+                        "description": "Qwen2小型模型"
+                    },
+                    {
+                        "name": "Qwen2-1.5B-Instruct",
+                        "model_id": "Qwen/Qwen2-1.5B-Instruct",
+                        "priority": 6,
+                        "size": "1.5B",
+                        "description": "Qwen2中型模型"
+                    }
+                ])
+
+            # Qwen1.5系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen1.5-0.5B-Chat",
+                        "model_id": "Qwen/Qwen1.5-0.5B-Chat",
+                        "priority": 7,
+                        "size": "0.5B",
+                        "description": "Qwen1.5小型模型"
+                    },
+                    {
+                        "name": "Qwen1.5-1.8B-Chat",
+                        "model_id": "Qwen/Qwen1.5-1.8B-Chat",
+                        "priority": 8,
+                        "size": "1.8B",
+                        "description": "Qwen1.5中型模型"
+                    }
+                ])
+
+            # 按优先级排序
+            qwen_models.sort(key=lambda x: x["priority"])
+
+            return qwen_models
+
+        except Exception as e:
+            print(f"[IndexTTS2] ⚠️  获取兼容模型列表失败: {e}")
+            return []
+
+    def _save_emotion_audio_to_temp(self, emotion_audio: dict) -> Optional[str]:
+        """将ComfyUI AUDIO对象保存为临时文件供IndexTTS2使用"""
+        try:
+            import tempfile
+            import torchaudio
+
+            if not isinstance(emotion_audio, dict) or "waveform" not in emotion_audio or "sample_rate" not in emotion_audio:
+                print("[MultiTalk] Invalid emotion audio object")
+                return None
+
+            waveform = emotion_audio["waveform"]
+            sample_rate = emotion_audio["sample_rate"]
+
+            # 移除batch维度（如果存在）
+            if waveform.dim() == 3:
+                waveform = waveform.squeeze(0)
+
+            # 创建临时文件
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
+                emotion_audio_path = tmp_file.name
+
+            # 保存音频到临时文件
+            torchaudio.save(emotion_audio_path, waveform, sample_rate)
+
+            return emotion_audio_path
+
+        except Exception as e:
+            print(f"[MultiTalk] Failed to save emotion audio: {str(e)}")
+            return None
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

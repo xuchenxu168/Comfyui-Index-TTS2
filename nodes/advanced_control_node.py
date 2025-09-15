@@ -103,9 +103,8 @@ class IndexTTS2AdvancedNode:
                 "emotion_mode": (["audio_prompt", "emotion_vector", "text_description", "mixed"], {
                     "default": "audio_prompt"
                 }),
-                "emotion_audio": ("STRING", {
-                    "default": "",
-                    "placeholder": "Path to emotion reference audio file"
+                "emotion_audio": ("AUDIO", {
+                    "tooltip": "连接音频加载节点以提供情感参考音频 / Connect audio loading node for emotion reference audio"
                 }),
                 "emotion_alpha": ("FLOAT", {
                     "default": 1.0,
@@ -121,14 +120,14 @@ class IndexTTS2AdvancedNode:
                 }),
                 
                 # Emotion Vector (8-dimensional)
-                "happy": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "angry": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "sad": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "fear": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "hate": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "low": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "surprise": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                "neutral": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05}),
+                "happy": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "angry": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "sad": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "fear": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "hate": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "low": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "surprise": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
+                "neutral": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, "display": "slider"}),
                 
                 # Advanced Settings
                 "use_gpt_latents": ("BOOLEAN", {
@@ -209,7 +208,7 @@ class IndexTTS2AdvancedNode:
         # Emotion control
         enable_emotion_control: bool = False,
         emotion_mode: str = "audio_prompt",
-        emotion_audio: str = "",
+        emotion_audio: Optional[dict] = None,
         emotion_alpha: float = 1.0,
         emotion_text: str = "",
         happy: float = 0.0,
@@ -357,28 +356,28 @@ class IndexTTS2AdvancedNode:
             print(f"[IndexTTS2 Advanced Error] {error_msg}")
             raise RuntimeError(error_msg)
     
-    def _add_emotion_params(self, infer_args: dict, emotion_mode: str, emotion_audio: str,
+    def _add_emotion_params(self, infer_args: dict, emotion_mode: str, emotion_audio: Optional[dict],
                            emotion_alpha: float, emotion_text: str, emotion_vector: List[float]) -> str:
         """添加情感控制参数"""
-        if emotion_mode == "audio_prompt" and emotion_audio and os.path.exists(emotion_audio):
-            infer_args["emo_audio_prompt"] = emotion_audio
-            infer_args["emo_alpha"] = emotion_alpha
-            return f"Audio emotion: {os.path.basename(emotion_audio)} (α={emotion_alpha})"
-        
-        elif emotion_mode == "emotion_vector":
-            # 验证情感向量
-            max_emotion_value = max(emotion_vector)
-            if max_emotion_value == 0.0:
-                # 如果所有情感值都为0，设置一个小的中性情感值
-                emotion_vector = emotion_vector.copy()
-                emotion_vector[7] = 0.1  # Neutral
-                max_emotion_value = 0.1
+        emotion_audio_path = None
+        if emotion_audio is not None:
+            # 处理ComfyUI AUDIO对象
+            emotion_audio_path = self._save_emotion_audio_to_temp(emotion_audio)
 
+        if emotion_mode == "audio_prompt" and emotion_audio_path:
+            infer_args["emo_audio_prompt"] = emotion_audio_path
+            infer_args["emo_alpha"] = emotion_alpha
+            return f"Audio emotion: emotion_reference.wav (α={emotion_alpha})"
+
+        elif emotion_mode == "emotion_vector":
+            # 验证和修正情感向量
+            emotion_vector = self._validate_and_fix_emotion_vector(emotion_vector)
             infer_args["emo_vector"] = emotion_vector
             emotion_names = ["Happy", "Angry", "Sad", "Fear", "Hate", "Low", "Surprise", "Neutral"]
+            max_emotion_value = max(emotion_vector)
             max_idx = emotion_vector.index(max_emotion_value)
             return f"Vector emotion: {emotion_names[max_idx]} ({max_emotion_value:.2f})"
-        
+
         elif emotion_mode == "text_description":
             infer_args["use_emo_text"] = True
             if emotion_text.strip():
@@ -386,30 +385,78 @@ class IndexTTS2AdvancedNode:
                 return f"Text emotion: {emotion_text[:50]}..."
             else:
                 return "Text emotion: Inferred from synthesis text"
-        
+
         elif emotion_mode == "mixed":
             # 组合多种情感控制方法
-            if emotion_audio and os.path.exists(emotion_audio):
-                infer_args["emo_audio_prompt"] = emotion_audio
+            if emotion_audio_path:
+                infer_args["emo_audio_prompt"] = emotion_audio_path
                 infer_args["emo_alpha"] = emotion_alpha * 0.7  # 降低权重以平衡
-            
-            # 检查情感向量是否有效
+
+            # 验证和修正情感向量
+            emotion_vector = self._validate_and_fix_emotion_vector(emotion_vector)
             max_emotion_value = max(emotion_vector)
-            if max_emotion_value > 0.05:  # 降低阈值，更敏感
-                # 如果最大值太小，设置一个最小的中性情感值
-                if max_emotion_value < 0.1:
-                    emotion_vector = emotion_vector.copy()
-                    emotion_vector[7] = max(emotion_vector[7], 0.1)  # 确保至少有一些中性情感
+            if max_emotion_value > 0.01:  # 使用更低的阈值
                 infer_args["emo_vector"] = emotion_vector
-            
+
             if emotion_text.strip():
                 infer_args["use_emo_text"] = True
                 infer_args["emo_text"] = emotion_text
-            
+
             return "Mixed emotion control: Audio + Vector + Text"
-        
+
         return "No emotion control applied"
-    
+
+    def _validate_and_fix_emotion_vector(self, emotion_vector: List[float]) -> List[float]:
+        """验证和修正情感向量，确保其有效性"""
+        try:
+            # 确保向量长度正确
+            if len(emotion_vector) != 8:
+                print(f"[IndexTTS2] Warning: emotion_vector length is {len(emotion_vector)}, expected 8. Padding/truncating.")
+                if len(emotion_vector) < 8:
+                    # 补齐到8维
+                    emotion_vector = emotion_vector + [0.0] * (8 - len(emotion_vector))
+                else:
+                    # 截断到8维
+                    emotion_vector = emotion_vector[:8]
+
+            # 创建副本以避免修改原始数据
+            emotion_vector = emotion_vector.copy()
+
+            # 确保所有值都在有效范围内 [0.0, 1.0]
+            for i in range(len(emotion_vector)):
+                if emotion_vector[i] < 0.0:
+                    emotion_vector[i] = 0.0
+                elif emotion_vector[i] > 1.0:
+                    emotion_vector[i] = 1.0
+                # 将非常小的值设为0，避免数值计算问题
+                elif emotion_vector[i] < 1e-6:
+                    emotion_vector[i] = 0.0
+
+            # 检查是否所有值都为0或接近0
+            max_emotion_value = max(emotion_vector)
+            total_emotion_value = sum(emotion_vector)
+
+            if max_emotion_value <= 0.001 or total_emotion_value <= 0.001:
+                # 如果所有情感值都为0或接近0，设置一个小的中性情感值
+                print("[IndexTTS2] All emotion values are zero or near zero, setting default neutral emotion")
+                emotion_vector[7] = 0.2  # Neutral - 设置一个合理的默认值
+            elif total_emotion_value > 2.0:
+                # 如果总和过大，进行归一化
+                print(f"[IndexTTS2] Emotion vector sum is {total_emotion_value:.3f}, normalizing to reasonable range")
+                scale_factor = 1.5 / total_emotion_value  # 将总和缩放到1.5左右
+                emotion_vector = [v * scale_factor for v in emotion_vector]
+
+            # 添加调试信息
+            print(f"[IndexTTS2] Validated emotion vector: {[f'{v:.3f}' for v in emotion_vector]}")
+            print(f"[IndexTTS2] Emotion names: ['Happy', 'Angry', 'Sad', 'Fear', 'Hate', 'Low', 'Surprise', 'Neutral']")
+
+            return emotion_vector
+
+        except Exception as e:
+            print(f"[IndexTTS2] Error validating emotion vector: {e}")
+            # 返回安全的默认情感向量
+            return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2]  # 默认中性情感
+
     def _load_default_model(self, use_fp16: bool, use_cuda_kernel: bool):
         """加载默认模型"""
         try:
@@ -429,9 +476,14 @@ class IndexTTS2AdvancedNode:
             )
             
             return model
-            
+
         except Exception as e:
-            raise RuntimeError(f"Failed to load IndexTTS2 model: {str(e)}")
+            error_msg = f"Failed to load IndexTTS2 model: {str(e)}"
+            # 特别处理DeepSpeed相关错误
+            if "deepspeed" in str(e).lower():
+                error_msg += "\n[IndexTTS2 Advanced] DeepSpeed相关错误，但基本功能应该仍然可用"
+                error_msg += "\n[IndexTTS2 Advanced] DeepSpeed-related error, but basic functionality should still work"
+            raise RuntimeError(error_msg)
     
     def _adjust_audio_speed(self, audio_path: str, speed_multiplier: float):
         """调整音频速度"""
@@ -525,6 +577,38 @@ class IndexTTS2AdvancedNode:
         ]
         
         return "\n".join(info_lines)
+
+    def _save_emotion_audio_to_temp(self, emotion_audio: dict) -> Optional[str]:
+        """将ComfyUI AUDIO对象保存为临时文件供IndexTTS2使用"""
+        try:
+            import tempfile
+            import torchaudio
+
+            if not isinstance(emotion_audio, dict) or "waveform" not in emotion_audio or "sample_rate" not in emotion_audio:
+                raise ValueError("emotion_audio must be a ComfyUI AUDIO object with 'waveform' and 'sample_rate' keys")
+
+            waveform = emotion_audio["waveform"]
+            sample_rate = emotion_audio["sample_rate"]
+
+            # 移除batch维度（如果存在）
+            if waveform.dim() == 3:
+                waveform = waveform.squeeze(0)
+
+            # 创建临时文件
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
+                emotion_audio_path = tmp_file.name
+
+            # 保存音频到临时文件
+            torchaudio.save(emotion_audio_path, waveform, sample_rate)
+
+            print(f"[IndexTTS2] 情感音频已保存到临时文件: {emotion_audio_path}")
+            print(f"[IndexTTS2] 情感音频信息: 采样率={sample_rate}, 形状={waveform.shape}")
+
+            return emotion_audio_path
+
+        except Exception as e:
+            print(f"[IndexTTS2] 保存情感音频失败: {str(e)}")
+            return None
 
     @classmethod
     def IS_CHANGED(cls, **kwargs):

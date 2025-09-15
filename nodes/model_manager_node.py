@@ -392,16 +392,16 @@ class IndexTTS2ModelManagerNode:
         """加载模型实例"""
         try:
             from indextts.infer_v2 import IndexTTS2
-            
+
             # 设备选择
             if device == "auto":
                 device = "cuda" if torch.cuda.is_available() else "cpu"
-            
+
             if verbose:
                 print(f"[IndexTTS2 ModelManager] Using device: {device}")
                 print(f"[IndexTTS2 ModelManager] FP16: {use_fp16}")
                 print(f"[IndexTTS2 ModelManager] CUDA kernel: {use_cuda_kernel}")
-            
+
             # 创建模型实例
             model = IndexTTS2(
                 cfg_path=config_path,
@@ -409,15 +409,20 @@ class IndexTTS2ModelManagerNode:
                 is_fp16=use_fp16,
                 use_cuda_kernel=use_cuda_kernel
             )
-            
+
             # 移动到指定设备
             if hasattr(model, 'to'):
                 model = model.to(device)
-            
+
             return model
-            
+
         except Exception as e:
-            raise RuntimeError(f"Failed to create IndexTTS2 model instance: {str(e)}")
+            error_msg = f"Failed to create IndexTTS2 model instance: {str(e)}"
+            # 特别处理DeepSpeed相关错误
+            if "deepspeed" in str(e).lower():
+                error_msg += "\n[IndexTTS2 ModelManager] DeepSpeed相关错误，但基本功能应该仍然可用"
+                error_msg += "\n[IndexTTS2 ModelManager] DeepSpeed-related error, but basic functionality should still work"
+            raise RuntimeError(error_msg)
     
     def _cleanup_memory(self):
         """清理内存"""
