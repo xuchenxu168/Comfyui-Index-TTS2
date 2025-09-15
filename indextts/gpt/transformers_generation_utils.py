@@ -56,7 +56,27 @@ except ImportError:
     StaticCache = None
     QuantizedCacheConfig = None
 from transformers.configuration_utils import PretrainedConfig
-from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
+# 兼容性导入：处理不同版本的transformers和DeepSpeed
+try:
+    from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
+except ImportError:
+    try:
+        # 尝试新的导入路径
+        from transformers.integrations import is_deepspeed_zero3_enabled
+    except ImportError:
+        try:
+            # 尝试从不同的deepspeed路径导入
+            try:
+                from deepspeed.utils.zero_to_fp32 import is_deepspeed_zero3_enabled
+            except ImportError:
+                # 尝试新的导入路径
+                from deepspeed.runtime.zero.stage3 import is_deepspeed_zero3_enabled
+        except ImportError:
+            # 如果都失败了，提供一个默认实现
+            def is_deepspeed_zero3_enabled():
+                """默认实现：当DeepSpeed不可用时返回False"""
+                return False
+            print("[IndexTTS2] Warning: DeepSpeed integration not available, using fallback implementation")
 from transformers.integrations.fsdp import is_fsdp_managed_module
 from transformers.modeling_outputs import CausalLMOutputWithPast, Seq2SeqLMOutput
 from transformers.pytorch_utils import isin_mps_friendly

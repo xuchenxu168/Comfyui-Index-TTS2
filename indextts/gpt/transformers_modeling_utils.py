@@ -8,6 +8,37 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
+
+# IndexTTS2 DeepSpeed兼容性模块
+# 处理CUDA 12.6和新版本transformers的兼容性问题
+try:
+    import deepspeed
+    DEEPSPEED_AVAILABLE = True
+except ImportError:
+    DEEPSPEED_AVAILABLE = False
+    # 创建一个虚拟的deepspeed模块，防止导入错误
+    class MockDeepSpeed:
+        class zero:
+            @staticmethod
+            def Init(*args, **kwargs):
+                class MockContext:
+                    def __enter__(self):
+                        return self
+                    def __exit__(self, *args):
+                        pass
+                return MockContext()
+
+            @staticmethod
+            def GatheredParameters(*args, **kwargs):
+                class MockContext:
+                    def __enter__(self):
+                        return self
+                    def __exit__(self, *args):
+                        pass
+                return MockContext()
+
+    deepspeed = MockDeepSpeed()
+    print("[IndexTTS2] DeepSpeed not available, using mock implementation for compatibility")
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -48,7 +79,37 @@ from indextts.gpt.transformers_generation_utils import GenerationMixin
 from transformers.generation import GenerationConfig
 
 
-from transformers.integrations import PeftAdapterMixin, deepspeed_config, is_deepspeed_zero3_enabled
+# 兼容性导入：处理不同版本的transformers和DeepSpeed
+try:
+    from transformers.integrations import PeftAdapterMixin, deepspeed_config, is_deepspeed_zero3_enabled
+except ImportError:
+    try:
+        # 尝试分别导入
+        from transformers.integrations import PeftAdapterMixin
+        try:
+            from transformers.integrations.deepspeed import deepspeed_config, is_deepspeed_zero3_enabled
+        except ImportError:
+            # DeepSpeed相关功能不可用时的回退
+            def deepspeed_config():
+                """默认实现：当DeepSpeed不可用时返回None"""
+                return None
+
+            def is_deepspeed_zero3_enabled():
+                """默认实现：当DeepSpeed不可用时返回False"""
+                return False
+            print("[IndexTTS2] Warning: DeepSpeed integration not available in transformers_modeling_utils, using fallback implementation")
+    except ImportError:
+        # 如果连PeftAdapterMixin都导入失败，提供最基本的回退
+        class PeftAdapterMixin:
+            """基本的PeftAdapterMixin回退实现"""
+            pass
+
+        def deepspeed_config():
+            return None
+
+        def is_deepspeed_zero3_enabled():
+            return False
+        print("[IndexTTS2] Warning: transformers.integrations not available, using minimal fallback implementation")
 from transformers.loss.loss_utils import LOSS_MAPPING
 from transformers.pytorch_utils import (  # noqa: F401
     Conv1D,
