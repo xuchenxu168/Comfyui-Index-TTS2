@@ -5,6 +5,17 @@ import os
 import sys
 import subprocess
 
+# 导入版本信息
+# Import version information
+try:
+    from .version import __version__, print_version_info
+    print(f"[IndexTTS2] 🎙️ IndexTTS2 ComfyUI Plugin v{__version__} 加载中...")
+    print(f"[IndexTTS2] 🎙️ IndexTTS2 ComfyUI Plugin v{__version__} Loading...")
+except ImportError:
+    __version__ = "2.2.0"
+    print(f"[IndexTTS2] 🎙️ IndexTTS2 ComfyUI Plugin v{__version__} 加载中...")
+    print(f"[IndexTTS2] 🎙️ IndexTTS2 ComfyUI Plugin v{__version__} Loading...")
+
 # 添加插件目录到Python路径
 # Add plugin directory to Python path
 plugin_dir = os.path.dirname(__file__)
@@ -166,9 +177,14 @@ from .nodes.emotion_control_node import IndexTTS2EmotionNode
 from .nodes.advanced_control_node import IndexTTS2AdvancedNode
 from .nodes.model_manager_node import IndexTTS2ModelManagerNode
 from .nodes.audio_utils_node import IndexTTS2AudioUtilsNode
+from .nodes.audio_enhancement_node import AudioEnhancementNode
 from .nodes.multi_talk_node import IndexTTS2MultiTalkNode
 from .nodes.speaker_emotion_config_node import IndexTTS2SpeakerEmotionConfigNode
 from .nodes.emotion_voice_multi_talk_node import IndexTTS2EmotionVoiceMultiTalkNode
+from .nodes.model_cache_info_node import IndexTTS2ModelCacheInfoNode
+from .nodes.transformers_compatibility_check_node import IndexTTS2TransformersCompatibilityCheckNode
+from .nodes.qwen_model_status_node import IndexTTS2QwenModelStatusNode
+from .nodes.qwen_model_display_node import IndexTTS2QwenModelDisplayNode
 # 移除自定义音频加载节点，直接使用ComfyUI官方的"加载音频"节点
 
 
@@ -182,9 +198,14 @@ NODE_CLASS_MAPPINGS = {
     "IndexTTS2_Advanced": IndexTTS2AdvancedNode,
     "IndexTTS2_ModelManager": IndexTTS2ModelManagerNode,
     "IndexTTS2_AudioUtils": IndexTTS2AudioUtilsNode,
+    "IndexTTS2_AudioEnhancement": AudioEnhancementNode,
     "IndexTTS2_MultiTalk": IndexTTS2MultiTalkNode,
     "IndexTTS2_SpeakerEmotionConfig": IndexTTS2SpeakerEmotionConfigNode,
     "IndexTTS2_EmotionVoiceMultiTalk": IndexTTS2EmotionVoiceMultiTalkNode,
+    "IndexTTS2_ModelCacheInfo": IndexTTS2ModelCacheInfoNode,
+    "IndexTTS2_TransformersCompatCheck": IndexTTS2TransformersCompatibilityCheckNode,
+    "IndexTTS2_QwenModelStatus": IndexTTS2QwenModelStatusNode,
+    "IndexTTS2_QwenModelDisplay": IndexTTS2QwenModelDisplayNode,
     # 移除自定义音频加载节点
 }
 
@@ -197,9 +218,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "IndexTTS2_Advanced": "IndexTTS2 Advanced Control",
     "IndexTTS2_ModelManager": "IndexTTS2 Model Manager",
     "IndexTTS2_AudioUtils": "IndexTTS2 Audio Utils",
+    "IndexTTS2_AudioEnhancement": "IndexTTS2 Audio Enhancement",
     "IndexTTS2_MultiTalk": "IndexTTS2 Multi-Talk with Emotion Control",
     "IndexTTS2_SpeakerEmotionConfig": "IndexTTS2 Speaker Emotion Config",
     "IndexTTS2_EmotionVoiceMultiTalk": "IndexTTS2 Emotion Voice Multi-Talk",
+    "IndexTTS2_ModelCacheInfo": "IndexTTS2 Model Cache Info",
+    "IndexTTS2_TransformersCompatCheck": "IndexTTS2 Transformers Compatibility Check",
+    "IndexTTS2_QwenModelStatus": "IndexTTS2 Qwen Model Status",
+    "IndexTTS2_QwenModelDisplay": "IndexTTS2 Qwen Model Display",
     # 移除自定义音频加载节点
 }
 
@@ -207,6 +233,19 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 # Export node mappings for ComfyUI
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 
-# 打印加载状态
-print("[IndexTTS2] ✓ 所有节点加载完成，包括情绪语音多人对话节点")
-print("[IndexTTS2] ✓ All nodes loaded, including emotion voice multi-talk node")
+# 打印加载状态和版本信息
+print("[IndexTTS2] ✓ 所有节点加载完成，包括音质增强节点和情绪语音多人对话节点")
+print("[IndexTTS2] ✓ All nodes loaded, including audio enhancement node and emotion voice multi-talk node")
+
+# 打印版本更新信息
+print(f"[IndexTTS2] 🎉 版本 {__version__} 新功能:")
+print(f"[IndexTTS2] 🎉 Version {__version__} New Features:")
+print("[IndexTTS2]   🤖 智能 Qwen 模型兼容性系统 (支持 Transformers 4.56.1+)")
+print("[IndexTTS2]   🤖 Smart Qwen Model Compatibility System (Supports Transformers 4.56.1+)")
+print("[IndexTTS2]   📊 新增 Qwen 模型状态显示节点")
+print("[IndexTTS2]   📊 New Qwen Model Status Display Nodes")
+print("[IndexTTS2]   🛡️ 完全修复兼容性问题，零配置自动适配")
+print("[IndexTTS2]   🛡️ Complete compatibility fix with zero-configuration auto-adaptation")
+print("[IndexTTS2] 🚀 IndexTTS2 准备就绪！Ready to use!")
+print("[IndexTTS2] 📝 查看 CHANGELOG.md 了解详细更新内容")
+print("[IndexTTS2] 📝 Check CHANGELOG.md for detailed update information")

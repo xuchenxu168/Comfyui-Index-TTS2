@@ -3,7 +3,7 @@
 <div align="center">
 
 ![IndexTTS2 Logo](https://img.shields.io/badge/IndexTTS2-ComfyUI%20Plugin-blue?style=for-the-badge&logo=audio&logoColor=white)
-![Version](https://img.shields.io/badge/Version-2.1-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-2.2.0-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Apache%202.0-orange?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.1%2B-red?style=for-the-badge&logo=pytorch)
@@ -15,6 +15,42 @@
 [⚡ Quick Start](#-30-second-quick-start) • [🚀 Model Download](#-model-download) • [📦 Installation](#-installation) • [🎨 Features](#-features) • [📚 Documentation](#-documentation)
 
 </div>
+
+---
+
+## 🆕 Version 2.2.0 Update (2025-01-15)
+
+### 🎯 Major Improvements
+
+**🤖 智能 Qwen 模型兼容性系统**
+- ✅ **完全修复** Transformers 4.56.1+ 兼容性问题
+- ✅ **智能模型选择** 支持 Qwen3/2.5/2/1.5 全系列
+- ✅ **自动降级** 根据 transformers 版本智能选择最佳模型
+- ✅ **零配置** 无需手动设置，自动适配
+
+**📊 新增可视化节点**
+- 🆕 **IndexTTS2 Qwen Model Display** - 直观显示当前推荐模型
+- 🆕 **IndexTTS2 Qwen Model Status** - 详细的模型状态信息
+- 🆕 **实时模型信息** - 在所有 TTS 节点中显示 Qwen 模型状态
+
+**🛡️ 增强稳定性**
+- ✅ **移除有问题的实例创建** 不再尝试加载无效模型路径
+- ✅ **健壮错误处理** 优雅处理各种异常情况
+- ✅ **完整测试覆盖** 新增测试脚本验证修复效果
+
+**🔧 技术改进**
+- ⚡ **性能优化** 减少不必要的模型加载尝试
+- 📝 **完善文档** 详细的兼容性说明和故障排除
+- 🧪 **测试工具** `test_qwen_fix.py` 验证系统状态
+
+### 📋 兼容性矩阵
+
+| Transformers版本 | Qwen3支持 | Qwen2.5支持 | 推荐模型 | 状态 |
+|-----------------|----------|------------|---------|------|
+| 4.56.1+ | ✅ | ✅ | Qwen3-0.5B-Instruct | 🎯 最佳 |
+| 4.51.0-4.56.0 | ✅ | ✅ | Qwen3-0.5B-Instruct | ✅ 优秀 |
+| 4.37.0-4.50.9 | ❌ | ✅ | Qwen2.5-0.5B-Instruct | ✅ 良好 |
+| 4.35.0-4.36.9 | ❌ | ❌ | 关键词匹配 | ⚠️ 基础 |
 
 ---
 
