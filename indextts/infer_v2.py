@@ -87,16 +87,25 @@ class IndexTTS2:
         else:
             self.gpt.eval()
         print(">> GPT weights restored from:", self.gpt_path)
-        # 检查DeepSpeed可用性
-        use_deepspeed = False
+        # 使用兼容性模块检查DeepSpeed可用性
         try:
-            import deepspeed
-            # 尝试简单的DeepSpeed操作来检查是否完整安装
-            use_deepspeed = True
-            print(">> DeepSpeed可用，启用加速推理")
-        except (ImportError, OSError, CalledProcessError, FileNotFoundError) as e:
+            from indextts.compat.deepspeed_compat import DEEPSPEED_AVAILABLE, check_deepspeed_availability
+            use_deepspeed, _ = check_deepspeed_availability()
+        except ImportError:
+            # 如果兼容性模块不可用，回退到原始检查
             use_deepspeed = False
-            print(f">> DeepSpeed不可用，使用标准PyTorch推理: {e}")
+            try:
+                import deepspeed
+                if hasattr(deepspeed, 'init_inference'):
+                    use_deepspeed = True
+                    print(">> DeepSpeed可用，启用加速推理")
+                else:
+                    print(">> DeepSpeed模块不完整，使用标准PyTorch推理")
+            except (ImportError, OSError, CalledProcessError, FileNotFoundError, AttributeError, ModuleNotFoundError) as e:
+                use_deepspeed = False
+                print(f">> DeepSpeed不可用，使用标准PyTorch推理: {e}")
+                if "deepspeed.utils.torch" in str(e):
+                    print(">> 检测到DeepSpeed版本兼容性问题，建议更新DeepSpeed或使用标准推理模式")
 
         if self.is_fp16:
             self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=True)
@@ -114,7 +123,12 @@ class IndexTTS2:
                 print(">> Failed to load custom CUDA kernel for BigVGAN. Falling back to torch.")
                 self.use_cuda_kernel = False
 
-        self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained("facebook/w2v-bert-2.0")
+        # 使用统一的缓存管理器下载到ComfyUI模型目录
+        from indextts.utils.model_cache_manager import get_hf_download_kwargs
+        w2v_kwargs = get_hf_download_kwargs("facebook/w2v-bert-2.0")
+        self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(
+            "facebook/w2v-bert-2.0", **w2v_kwargs
+        )
         self.semantic_model, self.semantic_mean, self.semantic_std = build_semantic_model(
             os.path.join(self.model_dir, self.cfg.w2v_stat))
         self.semantic_model = self.semantic_model.to(self.device)
@@ -123,7 +137,13 @@ class IndexTTS2:
         self.semantic_std = self.semantic_std.to(self.device)
 
         semantic_codec = build_semantic_codec(self.cfg.semantic_codec)
-        semantic_code_ckpt = hf_hub_download("amphion/MaskGCT", filename="semantic_codec/model.safetensors")
+        # 下载MaskGCT语义编解码器到ComfyUI模型目录
+        maskgct_kwargs = get_hf_download_kwargs("amphion/MaskGCT")
+        semantic_code_ckpt = hf_hub_download(
+            "amphion/MaskGCT",
+            filename="semantic_codec/model.safetensors",
+            **maskgct_kwargs
+        )
         safetensors.torch.load_model(semantic_codec, semantic_code_ckpt)
         self.semantic_codec = semantic_codec.to(self.device)
         self.semantic_codec.eval()
@@ -144,9 +164,12 @@ class IndexTTS2:
         self.s2mel.eval()
         print(">> s2mel weights restored from:", s2mel_path)
 
-        # load campplus_model
+        # load campplus_model - 下载到ComfyUI模型目录
+        campplus_kwargs = get_hf_download_kwargs("funasr/campplus")
         campplus_ckpt_path = hf_hub_download(
-            "funasr/campplus", filename="campplus_cn_common.bin"
+            "funasr/campplus",
+            filename="campplus_cn_common.bin",
+            **campplus_kwargs
         )
         campplus_model = CAMPPlus(feat_dim=80, embedding_size=192)
         campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu"))
@@ -155,7 +178,13 @@ class IndexTTS2:
         print(">> campplus_model weights restored from:", campplus_ckpt_path)
 
         bigvgan_name = self.cfg.vocoder.name
-        self.bigvgan = bigvgan.BigVGAN.from_pretrained(bigvgan_name, use_cuda_kernel=False)
+        # 下载BigVGAN到ComfyUI模型目录
+        bigvgan_kwargs = get_hf_download_kwargs(bigvgan_name)
+        self.bigvgan = bigvgan.BigVGAN.from_pretrained(
+            bigvgan_name,
+            use_cuda_kernel=False,
+            cache_dir=bigvgan_kwargs["cache_dir"]
+        )
         self.bigvgan = self.bigvgan.to(self.device)
         self.bigvgan.remove_weight_norm()
         self.bigvgan.eval()
@@ -382,17 +411,56 @@ class IndexTTS2:
             ref_mel = self.cache_mel
 
         if emo_vector is not None:
+            print(f"[IndexTTS2] Processing emotion vector: {emo_vector}")
             weight_vector = torch.tensor(emo_vector).to(self.device)
+
+            # 验证情感向量的有效性
+            weight_sum = torch.sum(weight_vector)
+            print(f"[IndexTTS2] Emotion vector sum: {weight_sum:.6f}")
+            print(f"[IndexTTS2] Individual values: {[f'{v:.6f}' for v in emo_vector]}")
+
+            if weight_sum <= 0.001:
+                print("[IndexTTS2] Warning: emotion vector sum is near zero, using default neutral emotion")
+                # 设置默认的中性情感
+                weight_vector = torch.zeros_like(weight_vector)
+                weight_vector[7] = 0.2  # Neutral emotion
+            elif weight_sum > 2.0:
+                print(f"[IndexTTS2] Warning: emotion vector sum is {weight_sum:.3f}, normalizing")
+                weight_vector = weight_vector / weight_sum * 1.0  # 归一化到合理范围
+
+            print(f"[IndexTTS2] Final weight_vector: {weight_vector.tolist()}")
+
             if use_random:
                 random_index = [random.randint(0, x - 1) for x in self.emo_num]
             else:
                 random_index = [find_most_similar_cosine(style, tmp) for tmp in self.spk_matrix]
 
-            emo_matrix = [tmp[index].unsqueeze(0) for index, tmp in zip(random_index, self.emo_matrix)]
-            emo_matrix = torch.cat(emo_matrix, 0)
-            emovec_mat = weight_vector.unsqueeze(1) * emo_matrix
-            emovec_mat = torch.sum(emovec_mat, 0)
-            emovec_mat = emovec_mat.unsqueeze(0)
+            # 验证索引的有效性，防止索引超出范围
+            validated_indices = []
+            for i, (index, tmp, emo_dim_size) in enumerate(zip(random_index, self.emo_matrix, self.emo_num)):
+                # 确保索引在有效范围内
+                if index >= tmp.shape[0]:
+                    print(f"[IndexTTS2] Warning: emotion index {index} >= matrix size {tmp.shape[0]} for dimension {i}, using 0")
+                    index = 0
+                elif index < 0:
+                    print(f"[IndexTTS2] Warning: emotion index {index} < 0 for dimension {i}, using 0")
+                    index = 0
+                validated_indices.append(index)
+
+            try:
+                emo_matrix = [tmp[index].unsqueeze(0) for index, tmp in zip(validated_indices, self.emo_matrix)]
+                emo_matrix = torch.cat(emo_matrix, 0)
+                emovec_mat = weight_vector.unsqueeze(1) * emo_matrix
+                emovec_mat = torch.sum(emovec_mat, 0)
+                emovec_mat = emovec_mat.unsqueeze(0)
+            except Exception as e:
+                print(f"[IndexTTS2] Error in emotion matrix processing: {e}")
+                print(f"[IndexTTS2] weight_vector shape: {weight_vector.shape}")
+                print(f"[IndexTTS2] validated_indices: {validated_indices}")
+                print(f"[IndexTTS2] emo_matrix shapes: {[tmp.shape for tmp in self.emo_matrix]}")
+                # 创建一个安全的默认情感矩阵
+                default_emovec = torch.zeros((1, self.emo_matrix[0].shape[1]), device=self.device)
+                emovec_mat = default_emovec
 
         if self.cache_emo_cond is None or self.cache_emo_audio_prompt != emo_audio_prompt:
             emo_audio, _ = librosa.load(emo_audio_prompt, sr=16000)
@@ -456,7 +524,12 @@ class IndexTTS2:
                     )
 
                     if emo_vector is not None:
-                        emovec = emovec_mat + (1 - torch.sum(weight_vector)) * emovec
+                        # 确保权重向量的和在合理范围内
+                        weight_sum = torch.sum(weight_vector)
+                        weight_sum = torch.clamp(weight_sum, 0.0, 1.0)  # 限制在[0,1]范围内
+
+                        # 混合情感向量和原始向量
+                        emovec = emovec_mat + (1 - weight_sum) * emovec
                         # emovec = emovec_mat
 
                     codes, speech_conditioning_latent = self.gpt.inference_speech(
@@ -596,41 +669,150 @@ class IndexTTS2:
 
 
 def find_most_similar_cosine(query_vector, matrix):
-    query_vector = query_vector.float()
-    matrix = matrix.float()
+    try:
+        query_vector = query_vector.float()
+        matrix = matrix.float()
 
-    similarities = F.cosine_similarity(query_vector, matrix, dim=1)
-    most_similar_index = torch.argmax(similarities)
-    return most_similar_index
+        # 检查输入的有效性
+        if matrix.shape[0] == 0:
+            print("[IndexTTS2] Warning: empty matrix in find_most_similar_cosine, returning 0")
+            return 0
+
+        if torch.isnan(query_vector).any() or torch.isinf(query_vector).any():
+            print("[IndexTTS2] Warning: invalid query_vector in find_most_similar_cosine, returning 0")
+            return 0
+
+        similarities = F.cosine_similarity(query_vector, matrix, dim=1)
+
+        # 检查相似度计算结果
+        if torch.isnan(similarities).any() or torch.isinf(similarities).any():
+            print("[IndexTTS2] Warning: invalid similarities in find_most_similar_cosine, returning 0")
+            return 0
+
+        most_similar_index = torch.argmax(similarities)
+
+        # 确保索引在有效范围内
+        index_value = most_similar_index.item()
+        if index_value >= matrix.shape[0]:
+            print(f"[IndexTTS2] Warning: computed index {index_value} >= matrix size {matrix.shape[0]}, using 0")
+            return 0
+
+        return index_value
+
+    except Exception as e:
+        print(f"[IndexTTS2] Error in find_most_similar_cosine: {e}")
+        return 0
 
 class QwenEmotion:
     def __init__(self, model_dir):
+        # 首先设置所有必要的属性，确保即使初始化失败也不会出现AttributeError
         self.model_dir = model_dir
+        self.model = None
+        self.tokenizer = None
+        self.is_available = False
 
-        # 确保路径格式正确，处理本地路径
-        if os.path.exists(model_dir):
-            # 本地路径，使用local_files_only=True
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_dir,
-                local_files_only=True,
-                trust_remote_code=True
-            )
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_dir,
-                torch_dtype="float16",  # "auto"
-                device_map="auto",
-                local_files_only=True,
-                trust_remote_code=True
-            )
-        else:
-            # 远程repo，正常加载
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_dir,
-                torch_dtype="float16",  # "auto"
-                device_map="auto"
-            )
-        self.prompt = "文本情感分类"
+        # 设置默认属性
+        self._initialize_default_attributes()
+
+        # 智能加载策略：先检查transformers版本兼容性
+        # Smart loading strategy: check transformers version compatibility first
+        print(f"[IndexTTS2] 尝试加载Qwen情感模型: {model_dir}")
+        print(f"[IndexTTS2] Attempting to load Qwen emotion model: {model_dir}")
+
+        # 检查是否应该跳过初始模型加载
+        should_skip_initial_load = self._should_skip_initial_model_load(model_dir)
+
+        if should_skip_initial_load:
+            print(f"[IndexTTS2] 🔄 检测到版本兼容性问题，直接使用备用方案")
+            print(f"[IndexTTS2] 🔄 Version compatibility issue detected, using fallback directly")
+            # 不抛出异常，而是直接跳到备用方案
+            self._handle_fallback_loading()
+            return
+
+        try:
+            # 直接尝试加载，让transformers自己处理兼容性
+            if os.path.exists(model_dir):
+                # 本地路径，使用local_files_only=True
+                print(f"[IndexTTS2] 从本地路径加载模型...")
+                print(f"[IndexTTS2] Loading model from local path...")
+
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_dir,
+                    local_files_only=True,
+                    trust_remote_code=True
+                )
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.model_dir,
+                    torch_dtype="float16",
+                    device_map="auto",
+                    local_files_only=True,
+                    trust_remote_code=True
+                )
+            else:
+                # 远程repo，正常加载
+                print(f"[IndexTTS2] 从远程仓库加载模型...")
+                print(f"[IndexTTS2] Loading model from remote repository...")
+
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_dir,
+                    trust_remote_code=True
+                )
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.model_dir,
+                    torch_dtype="float16",
+                    device_map="auto",
+                    trust_remote_code=True
+                )
+
+            self.is_available = True
+            print(f"[IndexTTS2] ✅ Qwen情感模型加载成功！")
+            print(f"[IndexTTS2] ✅ Qwen emotion model loaded successfully!")
+
+        except Exception as e:
+            # 任何加载失败都使用备用方案，不管具体原因
+            print(f"[IndexTTS2] ⚠️  Qwen情感模型加载失败: {e}")
+            print(f"[IndexTTS2] ⚠️  Failed to load Qwen emotion model: {e}")
+
+            # 提供具体的错误分析和建议
+            self._analyze_loading_error(e)
+
+            print(f"[IndexTTS2] 🔄 将使用备用情感分析方法")
+            print(f"[IndexTTS2] 🔄 Will use fallback emotion analysis method")
+
+            # 尝试智能备用方案：根据transformers版本加载兼容的Qwen模型
+            print(f"[IndexTTS2] 🔄 尝试智能备用方案...")
+            print(f"[IndexTTS2] 🔄 Trying intelligent fallback...")
+
+            fallback_success = self._try_fallback_qwen_models()
+
+            if not fallback_success:
+                print(f"[IndexTTS2] 🔄 所有Qwen模型都无法加载，使用关键词匹配备用方案")
+                print(f"[IndexTTS2] 🔄 All Qwen models failed to load, using keyword matching fallback")
+                self.is_available = False
+                self.model = None
+                self.tokenizer = None
+
+    def _initialize_default_attributes(self):
+        """初始化默认属性，确保所有方法都能正常调用"""
+        # 设置情感分析相关的默认属性
+        self.prompt = """你是一个情感分析专家。请分析以下文本的情感，并给出8个维度的情感分数（0-1之间的浮点数）：
+        happy（开心）、angry（愤怒）、sad（悲伤）、fear（恐惧）、hate（厌恶）、low（低落）、surprise（惊讶）、neutral（中性）。
+
+        请直接返回JSON格式的结果，例如：
+        {"happy": 0.8, "angry": 0.0, "sad": 0.1, "fear": 0.0, "hate": 0.0, "low": 0.0, "surprise": 0.1, "neutral": 0.0}
+
+        文本："""
+
+        # 设置备用情感字典
+        self.backup_dict = {
+            "happy": 0, "angry": 0, "sad": 0, "fear": 0,
+            "hate": 0, "low": 0, "surprise": 0, "neutral": 1.0
+        }
+
+        # 设置分数范围
+        self.max_score = 1.2
+        self.min_score = 0.0
+        # 设置转换字典
         self.convert_dict = {
             "愤怒": "angry",
             "高兴": "happy",
@@ -641,10 +823,242 @@ class QwenEmotion:
             "惊讶": "surprise",
             "自然": "neutral",
         }
-        self.backup_dict = {"happy": 0, "angry": 0, "sad": 0, "fear": 0, "hate": 0, "low": 0, "surprise": 0,
-                            "neutral": 1.0}
-        self.max_score = 1.2
-        self.min_score = 0.0
+
+    def _analyze_loading_error(self, error):
+        """分析加载错误并提供具体的解决建议"""
+        error_str = str(error).lower()
+
+        if "qwen3" in error_str and "transformers does not recognize" in error_str:
+            print(f"[IndexTTS2] 💡 错误分析: Qwen3模型需要更新的transformers版本")
+            print(f"[IndexTTS2] 💡 Error analysis: Qwen3 model requires newer transformers version")
+            print(f"[IndexTTS2] 🔧 建议解决方案:")
+            print(f"[IndexTTS2] 🔧 Suggested solutions:")
+            print(f"[IndexTTS2]    1. 升级transformers: pip install --upgrade transformers")
+            print(f"[IndexTTS2]    2. 或安装开发版本: pip install git+https://github.com/huggingface/transformers.git")
+            print(f"[IndexTTS2]    3. 当前将尝试使用兼容的备用模型")
+        elif "keyerror" in error_str:
+            print(f"[IndexTTS2] 💡 错误分析: 模型架构不被当前transformers版本支持")
+            print(f"[IndexTTS2] 💡 Error analysis: Model architecture not supported by current transformers version")
+        elif "no module named" in error_str:
+            print(f"[IndexTTS2] 💡 错误分析: 缺少必要的依赖包")
+            print(f"[IndexTTS2] 💡 Error analysis: Missing required dependencies")
+        elif "out of memory" in error_str or "cuda out of memory" in error_str:
+            print(f"[IndexTTS2] 💡 错误分析: GPU内存不足")
+            print(f"[IndexTTS2] 💡 Error analysis: Insufficient GPU memory")
+            print(f"[IndexTTS2] 🔧 建议: 将尝试使用更小的模型")
+        else:
+            print(f"[IndexTTS2] 💡 错误分析: 通用加载错误，将尝试备用方案")
+            print(f"[IndexTTS2] 💡 Error analysis: General loading error, trying fallback options")
+
+    def _should_skip_initial_model_load(self, model_dir):
+        """
+        检查是否应该跳过初始模型加载
+        基于模型路径和transformers版本进行智能判断
+        """
+        try:
+            import transformers
+            from packaging import version
+
+            current_ver = version.parse(transformers.__version__)
+            print(f"[IndexTTS2] 检查版本兼容性 - transformers: {transformers.__version__}")
+            print(f"[IndexTTS2] Checking version compatibility - transformers: {transformers.__version__}")
+
+            # 检查模型路径中是否包含已知的版本敏感关键词
+            model_path_lower = model_dir.lower()
+
+            # Qwen3相关模型需要transformers >= 4.51.0
+            if any(keyword in model_path_lower for keyword in ['qwen3', 'qwen-3', 'qwen_3']):
+                if current_ver < version.parse("4.51.0"):
+                    print(f"[IndexTTS2] ⚠️  检测到Qwen3模型，但transformers版本 {transformers.__version__} < 4.51.0")
+                    print(f"[IndexTTS2] ⚠️  Detected Qwen3 model, but transformers version {transformers.__version__} < 4.51.0")
+                    return True
+
+            # 检查配置文件中的特定模型名称
+            if 'qwen0.6bemo4-merge' in model_path_lower:
+                # 这个模型很可能是Qwen3架构，需要更新的transformers
+                # 对于4.49.0+版本，我们可以尝试加载，但仍然准备备用方案
+                if current_ver < version.parse("4.49.0"):
+                    print(f"[IndexTTS2] ⚠️  检测到qwen0.6bemo4-merge模型，transformers版本 {transformers.__version__} 可能不兼容")
+                    print(f"[IndexTTS2] ⚠️  Detected qwen0.6bemo4-merge model, transformers version {transformers.__version__} may not be compatible")
+                    return True
+                else:
+                    print(f"[IndexTTS2] 💡 transformers版本 {transformers.__version__} >= 4.49.0，尝试加载qwen0.6bemo4-merge模型")
+                    print(f"[IndexTTS2] 💡 transformers version {transformers.__version__} >= 4.49.0, attempting to load qwen0.6bemo4-merge model")
+
+            return False
+
+        except Exception as e:
+            print(f"[IndexTTS2] ⚠️  版本兼容性检查失败: {e}")
+            print(f"[IndexTTS2] ⚠️  Version compatibility check failed: {e}")
+            return False
+
+    def _handle_fallback_loading(self):
+        """处理备用加载逻辑"""
+        print(f"[IndexTTS2] 🔄 将使用备用情感分析方法")
+        print(f"[IndexTTS2] 🔄 Will use fallback emotion analysis method")
+
+        # 尝试智能备用方案：根据transformers版本加载兼容的Qwen模型
+        print(f"[IndexTTS2] 🔄 尝试智能备用方案...")
+        print(f"[IndexTTS2] 🔄 Trying intelligent fallback...")
+
+        fallback_success = self._try_fallback_qwen_models()
+
+        if not fallback_success:
+            print(f"[IndexTTS2] 🔄 所有Qwen模型都无法加载，使用关键词匹配备用方案")
+            print(f"[IndexTTS2] 🔄 All Qwen models failed to load, using keyword matching fallback")
+            self.is_available = False
+            self.model = None
+            self.tokenizer = None
+
+    def _get_compatible_qwen_models(self):
+        """根据transformers版本获取兼容的Qwen模型列表"""
+        try:
+            import transformers
+            from packaging import version
+
+            current_ver = version.parse(transformers.__version__)
+            print(f"[IndexTTS2] 检测transformers版本: {transformers.__version__}")
+            print(f"[IndexTTS2] Detecting transformers version: {transformers.__version__}")
+
+            # 定义不同Qwen模型的版本要求和优先级
+            qwen_models = []
+
+            # Qwen3系列 (需要transformers >= 4.51.0)
+            if current_ver >= version.parse("4.51.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen3-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen3-0.5B-Instruct",
+                        "priority": 1,
+                        "size": "0.5B",
+                        "description": "最新Qwen3模型，小型高效"
+                    },
+                    {
+                        "name": "Qwen3-1.8B-Instruct",
+                        "model_id": "Qwen/Qwen3-1.8B-Instruct",
+                        "priority": 2,
+                        "size": "1.8B",
+                        "description": "Qwen3中型模型"
+                    }
+                ])
+
+            # Qwen2.5系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen2.5-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+                        "priority": 3,
+                        "size": "0.5B",
+                        "description": "Qwen2.5小型模型"
+                    },
+                    {
+                        "name": "Qwen2.5-1.5B-Instruct",
+                        "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+                        "priority": 4,
+                        "size": "1.5B",
+                        "description": "Qwen2.5中型模型"
+                    }
+                ])
+
+            # Qwen2系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen2-0.5B-Instruct",
+                        "model_id": "Qwen/Qwen2-0.5B-Instruct",
+                        "priority": 5,
+                        "size": "0.5B",
+                        "description": "Qwen2小型模型"
+                    },
+                    {
+                        "name": "Qwen2-1.5B-Instruct",
+                        "model_id": "Qwen/Qwen2-1.5B-Instruct",
+                        "priority": 6,
+                        "size": "1.5B",
+                        "description": "Qwen2中型模型"
+                    }
+                ])
+
+            # Qwen1.5系列 (需要transformers >= 4.37.0)
+            if current_ver >= version.parse("4.37.0"):
+                qwen_models.extend([
+                    {
+                        "name": "Qwen1.5-0.5B-Chat",
+                        "model_id": "Qwen/Qwen1.5-0.5B-Chat",
+                        "priority": 7,
+                        "size": "0.5B",
+                        "description": "Qwen1.5小型模型"
+                    },
+                    {
+                        "name": "Qwen1.5-1.8B-Chat",
+                        "model_id": "Qwen/Qwen1.5-1.8B-Chat",
+                        "priority": 8,
+                        "size": "1.8B",
+                        "description": "Qwen1.5中型模型"
+                    }
+                ])
+
+            # 按优先级排序
+            qwen_models.sort(key=lambda x: x["priority"])
+
+            print(f"[IndexTTS2] 找到 {len(qwen_models)} 个兼容的Qwen模型")
+            print(f"[IndexTTS2] Found {len(qwen_models)} compatible Qwen models")
+
+            return qwen_models
+
+        except Exception as e:
+            print(f"[IndexTTS2] ⚠️  获取兼容模型列表失败: {e}")
+            print(f"[IndexTTS2] ⚠️  Failed to get compatible model list: {e}")
+            return []
+
+    def _try_fallback_qwen_models(self):
+        """尝试加载备用Qwen模型"""
+        compatible_models = self._get_compatible_qwen_models()
+
+        if not compatible_models:
+            print(f"[IndexTTS2] ⚠️  没有找到兼容的Qwen模型")
+            print(f"[IndexTTS2] ⚠️  No compatible Qwen models found")
+            return False
+
+        for model_info in compatible_models:
+            try:
+                print(f"[IndexTTS2] 🔄 尝试加载备用模型: {model_info['name']} ({model_info['size']})")
+                print(f"[IndexTTS2] 🔄 Trying fallback model: {model_info['name']} ({model_info['size']})")
+                print(f"[IndexTTS2] 📝 模型描述: {model_info['description']}")
+                print(f"[IndexTTS2] 📝 Model description: {model_info['description']}")
+
+                # 尝试加载备用模型
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_info['model_id'],
+                    trust_remote_code=True
+                )
+
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_info['model_id'],
+                    torch_dtype="float16",
+                    device_map="auto",
+                    trust_remote_code=True
+                )
+
+                self.is_available = True
+                self.fallback_model_info = model_info
+
+                print(f"[IndexTTS2] ✅ 备用模型加载成功: {model_info['name']}")
+                print(f"[IndexTTS2] ✅ Fallback model loaded successfully: {model_info['name']}")
+                print(f"[IndexTTS2] 💡 使用 {model_info['size']} 参数的 {model_info['name']} 进行情感分析")
+                print(f"[IndexTTS2] 💡 Using {model_info['size']} parameter {model_info['name']} for emotion analysis")
+
+                return True
+
+            except Exception as e:
+                print(f"[IndexTTS2] ⚠️  备用模型 {model_info['name']} 加载失败: {e}")
+                print(f"[IndexTTS2] ⚠️  Fallback model {model_info['name']} failed to load: {e}")
+                continue
+
+        print(f"[IndexTTS2] ❌ 所有备用Qwen模型都加载失败")
+        print(f"[IndexTTS2] ❌ All fallback Qwen models failed to load")
+        return False
 
     def convert(self, content):
         content = content.replace("\n", " ")
@@ -688,37 +1102,167 @@ class QwenEmotion:
         return emotion_dict
 
     def inference(self, text_input):
-        start = time.time()
-        messages = [
-            {"role": "system", "content": f"{self.prompt}"},
-            {"role": "user", "content": f"{text_input}"}
-        ]
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=False,
-        )
-        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
+        """
+        进行情感推理
+        如果模型不可用，返回备用情感字典
+        """
+        # 检查模型是否可用
+        if not self.is_available or self.model is None or self.tokenizer is None:
+            print(f"[IndexTTS2] ⚠️  Qwen emotion model not available, using keyword-based fallback")
+            print(f"[IndexTTS2] ⚠️  Qwen情感模型不可用，使用关键词匹配备用方案")
 
-        # conduct text completion
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=32768,
-            pad_token_id=self.tokenizer.eos_token_id
-        )
-        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+            # 使用简单的关键词匹配作为备用方案
+            fallback_emotion = self._fallback_emotion_analysis(text_input)
+            return fallback_emotion, f"Keyword fallback for: {text_input[:50]}..."
 
-        # parsing thinking content
+        # 显示使用的模型信息
+        if hasattr(self, 'fallback_model_info'):
+            model_info = self.fallback_model_info
+            print(f"[IndexTTS2] 🤖 使用备用模型进行情感分析: {model_info['name']} ({model_info['size']})")
+            print(f"[IndexTTS2] 🤖 Using fallback model for emotion analysis: {model_info['name']} ({model_info['size']})")
+        else:
+            print(f"[IndexTTS2] 🤖 使用原始Qwen模型进行情感分析")
+            print(f"[IndexTTS2] 🤖 Using original Qwen model for emotion analysis")
+
         try:
-            # rindex finding 151668 (</think>)
-            index = len(output_ids) - output_ids[::-1].index(151668)
-        except ValueError:
-            index = 0
+            start = time.time()
+            messages = [
+                {"role": "system", "content": f"{self.prompt}"},
+                {"role": "user", "content": f"{text_input}"}
+            ]
+            text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
 
-        content = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
-        emotion_dict = self.convert(content)
-        return emotion_dict, content
+            # conduct text completion
+            generated_ids = self.model.generate(
+                **model_inputs,
+                max_new_tokens=32768,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+
+            # parsing thinking content
+            try:
+                # rindex finding 151668 (</think>)
+                index = len(output_ids) - output_ids[::-1].index(151668)
+            except ValueError:
+                index = 0
+
+            content = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+            emotion_dict = self.convert(content)
+            return emotion_dict, content
+
+        except Exception as e:
+            print(f"[IndexTTS2] ⚠️  Qwen emotion inference failed: {e}")
+            print(f"[IndexTTS2] ⚠️  Qwen情感推理失败，使用备用分析")
+
+            # 发生错误时使用备用方案
+            fallback_emotion = self._fallback_emotion_analysis(text_input)
+            return fallback_emotion, f"Error fallback for: {text_input[:50]}..."
+
+    def _fallback_emotion_analysis(self, text_input):
+        """
+        增强的备用情感分析方法
+        使用更智能的关键词匹配和语义分析来分析情感
+        Enhanced fallback emotion analysis method using smarter keyword matching and semantic analysis
+        """
+        print(f"[IndexTTS2] 🔍 使用增强关键词匹配进行情感分析")
+        print(f"[IndexTTS2] 🔍 Using enhanced keyword matching for emotion analysis")
+
+        text_lower = text_input.lower()
+
+        # 定义更全面的情感关键词库，包含权重
+        emotion_keywords = {
+            "happy": {
+                "high": ["太好了", "超开心", "非常高兴", "特别兴奋", "狂欢", "欣喜若狂"],
+                "medium": ["开心", "高兴", "快乐", "兴奋", "愉快", "欢乐", "喜悦", "好棒", "棒极了"],
+                "low": ["哈哈", "笑", "呵呵", "嘿嘿", "不错", "挺好"]
+            },
+            "angry": {
+                "high": ["气死了", "愤怒至极", "火冒三丈", "暴怒", "狂怒"],
+                "medium": ["生气", "愤怒", "气愤", "恼火", "烦躁", "愤慨", "火大"],
+                "low": ["讨厌", "烦", "怒", "不爽", "郁闷"]
+            },
+            "sad": {
+                "high": ["心痛", "痛不欲生", "悲痛欲绝", "绝望", "崩溃"],
+                "medium": ["伤心", "难过", "悲伤", "沮丧", "失望", "痛苦", "难受"],
+                "low": ["哭", "眼泪", "唉", "可惜", "遗憾"]
+            },
+            "fear": {
+                "high": ["恐怖", "惊慌失措", "吓死了", "恐惧至极"],
+                "medium": ["害怕", "恐惧", "担心", "紧张", "焦虑", "不安", "惊慌"],
+                "low": ["可怕", "吓", "担忧", "忧虑", "不放心"]
+            },
+            "hate": {
+                "high": ["憎恨", "厌恶至极", "深恶痛绝", "恨死了"],
+                "medium": ["讨厌", "厌恶", "反感", "恶心", "嫌弃", "受不了"],
+                "low": ["烦人", "不喜欢", "反对", "拒绝"]
+            },
+            "low": {
+                "high": ["消沉", "颓废", "绝望", "无助", "空虚"],
+                "medium": ["低落", "郁闷", "无聊", "疲惫", "没劲", "无力"],
+                "low": ["累", "懒", "困", "倦", "乏"]
+            },
+            "surprise": {
+                "high": ["震惊", "惊呆了", "不敢相信", "太意外了"],
+                "medium": ["惊讶", "意外", "吃惊", "惊奇", "想不到"],
+                "low": ["天哪", "哇", "真的吗", "是吗", "咦"]
+            },
+            "neutral": {
+                "high": ["明白了", "了解了", "知道了"],
+                "medium": ["好的", "明白", "了解", "是的", "对"],
+                "low": ["嗯", "哦", "这样", "那样", "好吧"]
+            }
+        }
+
+        # 权重设置
+        weight_map = {"high": 3.0, "medium": 2.0, "low": 1.0}
+
+        # 计算每种情感的加权匹配分数
+        emotion_scores = {}
+        matched_keywords = {}
+
+        for emotion, levels in emotion_keywords.items():
+            score = 0
+            matches = []
+            for level, keywords in levels.items():
+                weight = weight_map[level]
+                for keyword in keywords:
+                    if keyword in text_lower:
+                        score += weight
+                        matches.append(f"{keyword}({level})")
+            emotion_scores[emotion] = score
+            if matches:
+                matched_keywords[emotion] = matches
+
+        # 显示匹配的关键词（用于调试）
+        if matched_keywords:
+            print(f"[IndexTTS2] 🔍 匹配的情感关键词: {matched_keywords}")
+            print(f"[IndexTTS2] 🔍 Matched emotion keywords: {matched_keywords}")
+
+        # 如果没有匹配到任何关键词，返回中性情感
+        if sum(emotion_scores.values()) == 0:
+            return self.backup_dict.copy()
+
+        # 归一化分数
+        total_score = sum(emotion_scores.values())
+        normalized_scores = {}
+        for emotion, score in emotion_scores.items():
+            if total_score > 0:
+                normalized_scores[emotion] = min(self.max_score, (score / total_score) * 1.0)
+            else:
+                normalized_scores[emotion] = 0.0
+
+        # 确保至少有一个情感有分数
+        if sum(normalized_scores.values()) == 0:
+            normalized_scores["neutral"] = 0.8
+
+        return normalized_scores
 
 
 if __name__ == "__main__":
