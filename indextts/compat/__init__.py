@@ -27,17 +27,13 @@ def check_transformers_version():
         from packaging import version as pkg_version
         current_ver = pkg_version.parse(version)
         
-        # 定义兼容版本范围
-        min_compatible = pkg_version.parse("4.35.0")
-        max_compatible = pkg_version.parse("4.40.0")
+        # 完全移除版本限制 - 任何版本都尝试使用
+        # Completely remove version restrictions - try to use any version
         recommended = pkg_version.parse("4.36.2")
-        
-        if min_compatible <= current_ver <= max_compatible:
-            compatibility = "compatible"
-        elif current_ver < min_compatible:
-            compatibility = "too_old"
-        else:
-            compatibility = "too_new"
+
+        # 所有版本都标记为兼容，让实际加载来决定是否可用
+        # Mark all versions as compatible, let actual loading decide availability
+        compatibility = "compatible"
             
         return {
             "version": version,
