@@ -47,19 +47,19 @@ class IndexTTS2:
             use_cuda_kernel (None | bool): whether to use BigVGan custom fused activation CUDA kernel, only for CUDA device.
         """
         if device is not None:
-            self.device = device
+            self.device = torch.device(device)
             self.is_fp16 = False if device == "cpu" else is_fp16
             self.use_cuda_kernel = use_cuda_kernel is not None and use_cuda_kernel and device.startswith("cuda")
         elif torch.cuda.is_available():
-            self.device = "cuda:0"
+            self.device = torch.device("cuda:0")
             self.is_fp16 = is_fp16
             self.use_cuda_kernel = use_cuda_kernel is None or use_cuda_kernel
         elif hasattr(torch, "mps") and torch.backends.mps.is_available():
-            self.device = "mps"
+            self.device = torch.device("mps")
             self.is_fp16 = False  # Use float16 on MPS is overhead than float32
             self.use_cuda_kernel = False
         else:
-            self.device = "cpu"
+            self.device = torch.device("cpu")
             self.is_fp16 = False
             self.use_cuda_kernel = False
             print(">> Be patient, it may take a while to run in CPU mode.")
