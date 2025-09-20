@@ -130,17 +130,17 @@ class IndexTTS2:
         # 初始化local_w2v_path变量
         local_w2v_path = None
 
-        # 检查多个可能的本地路径
-        local_w2v_paths = [
-            cache_dir / "w2v_bert",  # 标准缓存路径
-            cache_dir,  # 直接在external_models目录
-            cache_dir.parent / "w2v_bert",  # 上一级目录的w2v_bert文件夹
-        ]
-
-        # 检查HuggingFace缓存格式
+        # 检查所有可能的HuggingFace缓存格式
         hf_cache_paths = [
+            # 标准external_models缓存
             cache_dir / "w2v_bert" / "models--facebook--w2v-bert-2.0",
             cache_dir / "w2v_bert" / "facebook_w2v-bert-2.0",
+            # HuggingFace Hub缓存
+            cache_dir / "huggingface" / "hub" / "models--facebook--w2v-bert-2.0",
+            cache_dir / "huggingface" / "transformers" / "models--facebook--w2v-bert-2.0",
+            # 其他可能的格式
+            cache_dir / "models--facebook--w2v-bert-2.0",
+            cache_dir.parent / "w2v_bert" / "models--facebook--w2v-bert-2.0",
         ]
 
         # 查找HuggingFace缓存中的snapshots目录
@@ -152,6 +152,7 @@ class IndexTTS2:
                         if snapshot.is_dir():
                             config_file = snapshot / "config.json"
                             model_file = snapshot / "model.safetensors"
+                            preprocessor_file = snapshot / "preprocessor_config.json"
                             if config_file.exists() and model_file.exists():
                                 local_w2v_path = snapshot
                                 print(f"[IndexTTS2] 发现本地w2v-bert模型 (HuggingFace缓存): {local_w2v_path}")
@@ -161,12 +162,17 @@ class IndexTTS2:
 
         # 如果HuggingFace缓存中没有找到，检查直接路径
         if not local_w2v_path:
-            for path in local_w2v_paths:
+            direct_paths = [
+                cache_dir / "w2v_bert",  # 标准缓存路径
+                cache_dir,  # 直接在external_models目录
+                cache_dir.parent / "w2v_bert",  # 上一级目录的w2v_bert文件夹
+            ]
+            for path in direct_paths:
                 config_file = path / "config.json"
                 model_file = path / "model.safetensors"
                 if config_file.exists() and model_file.exists():
                     local_w2v_path = path
-                    print(f"[IndexTTS2] 发现本地w2v-bert模型: {local_w2v_path}")
+                    print(f"[IndexTTS2] 发现本地w2v-bert模型 (直接路径): {local_w2v_path}")
                     break
 
         # 加载SeamlessM4TFeatureExtractor
@@ -195,10 +201,17 @@ class IndexTTS2:
         # 检查本地是否已有MaskGCT语义编解码器
         local_maskgct_path = None
 
-        # 检查HuggingFace缓存格式
+        # 检查所有可能的HuggingFace缓存格式
         maskgct_cache_paths = [
+            # 标准external_models缓存
             cache_dir / "maskgct" / "models--amphion--MaskGCT",
             cache_dir / "maskgct" / "amphion_MaskGCT",
+            # HuggingFace Hub缓存
+            cache_dir / "huggingface" / "hub" / "models--amphion--MaskGCT",
+            cache_dir / "huggingface" / "transformers" / "models--amphion--MaskGCT",
+            # 其他可能的格式
+            cache_dir / "models--amphion--MaskGCT",
+            cache_dir.parent / "maskgct" / "models--amphion--MaskGCT",
         ]
 
         # 查找HuggingFace缓存中的snapshots目录
@@ -211,7 +224,7 @@ class IndexTTS2:
                             semantic_codec_file = snapshot / "semantic_codec" / "model.safetensors"
                             if semantic_codec_file.exists():
                                 local_maskgct_path = semantic_codec_file
-                                print(f"[IndexTTS2] 发现本地MaskGCT语义编解码器: {local_maskgct_path}")
+                                print(f"[IndexTTS2] 发现本地MaskGCT语义编解码器 (HuggingFace缓存): {local_maskgct_path}")
                                 break
                     if local_maskgct_path:
                         break
@@ -251,10 +264,17 @@ class IndexTTS2:
         # 检查本地是否已有CAMPPlus模型
         local_campplus_path = None
 
-        # 检查HuggingFace缓存格式
+        # 检查所有可能的HuggingFace缓存格式
         campplus_cache_paths = [
+            # 标准external_models缓存
             cache_dir / "campplus" / "models--funasr--campplus",
             cache_dir / "campplus" / "funasr_campplus",
+            # HuggingFace Hub缓存
+            cache_dir / "huggingface" / "hub" / "models--funasr--campplus",
+            cache_dir / "huggingface" / "transformers" / "models--funasr--campplus",
+            # 其他可能的格式
+            cache_dir / "models--funasr--campplus",
+            cache_dir.parent / "campplus" / "models--funasr--campplus",
         ]
 
         # 查找HuggingFace缓存中的snapshots目录
@@ -267,7 +287,7 @@ class IndexTTS2:
                             campplus_file = snapshot / "campplus_cn_common.bin"
                             if campplus_file.exists():
                                 local_campplus_path = campplus_file
-                                print(f"[IndexTTS2] 发现本地CAMPPlus模型: {local_campplus_path}")
+                                print(f"[IndexTTS2] 发现本地CAMPPlus模型 (HuggingFace缓存): {local_campplus_path}")
                                 break
                     if local_campplus_path:
                         break
@@ -309,10 +329,17 @@ class IndexTTS2:
             cache_dir.parent / "bigvgan",  # 上一级目录的bigvgan文件夹
         ]
         
-        # 检查HuggingFace缓存格式
+        # 检查所有可能的HuggingFace缓存格式
         hf_cache_paths = [
+            # 标准external_models缓存
             cache_dir / "bigvgan" / "models--nvidia--bigvgan_v2_22khz_80band_256x",
             cache_dir / "bigvgan" / "nvidia_bigvgan_v2_22khz_80band_256x",
+            # HuggingFace Hub缓存
+            cache_dir / "huggingface" / "hub" / "models--nvidia--bigvgan_v2_22khz_80band_256x",
+            cache_dir / "huggingface" / "transformers" / "models--nvidia--bigvgan_v2_22khz_80band_256x",
+            # 其他可能的格式
+            cache_dir / "models--nvidia--bigvgan_v2_22khz_80band_256x",
+            cache_dir.parent / "bigvgan" / "models--nvidia--bigvgan_v2_22khz_80band_256x",
         ]
         
         # 查找HuggingFace缓存中的snapshots目录
@@ -338,7 +365,7 @@ class IndexTTS2:
                 model_file = path / "bigvgan_generator.pt"
                 if config_file.exists() and model_file.exists():
                     local_bigvgan_path = path
-                    print(f"[IndexTTS2] 发现本地BigVGAN模型: {local_bigvgan_path}")
+                    print(f"[IndexTTS2] 发现本地BigVGAN模型 (直接路径): {local_bigvgan_path}")
                     break
         
         # 添加超时和错误处理的BigVGAN加载
