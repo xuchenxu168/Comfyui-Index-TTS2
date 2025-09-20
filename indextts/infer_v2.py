@@ -659,9 +659,20 @@ class IndexTTS2:
             spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
             self.spk_matrix = spk_matrix.to(self.device)
             print("[IndexTTS2] ✓ 说话人矩阵加载完成")
+
+            # 分割矩阵前进行验证
+            print(f"[IndexTTS2] 准备分割矩阵，emo_num: {self.emo_num}")
+            print(f"[IndexTTS2] emo_matrix shape: {self.emo_matrix.shape}")
+            print(f"[IndexTTS2] spk_matrix shape: {self.spk_matrix.shape}")
+
+            # 执行矩阵分割
+            self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
+            self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
+            print(f"[IndexTTS2] ✓ 矩阵分割完成，emo_matrix长度: {len(self.emo_matrix)}, spk_matrix长度: {len(self.spk_matrix)}")
+
         except Exception as e:
-            print(f"[ERROR] 矩阵加载失败: {e}")
-            raise RuntimeError(f"矩阵加载失败: {e}")
+            print(f"[ERROR] 矩阵加载或分割失败: {e}")
+            raise RuntimeError(f"矩阵加载或分割失败: {e}")
 
     def _create_fallback_normalizer(self):
         """创建一个增强的TextNormalizer作为回退方案，包含数字转换功能"""
@@ -816,19 +827,7 @@ class IndexTTS2:
 
         return EnhancedFallbackTextNormalizer()
 
-        # 分割矩阵前进行验证
-        print(f"[IndexTTS2] 准备分割矩阵，emo_num: {self.emo_num}")
-        print(f"[IndexTTS2] emo_matrix shape: {self.emo_matrix.shape}")
-        print(f"[IndexTTS2] spk_matrix shape: {self.spk_matrix.shape}")
 
-        try:
-            self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
-            self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
-            print(f"[IndexTTS2] ✓ 矩阵分割完成，emo_matrix长度: {len(self.emo_matrix)}, spk_matrix长度: {len(self.spk_matrix)}")
-        except Exception as e:
-            print(f"[ERROR] 矩阵分割失败: {e}")
-            print(f"[ERROR] emo_num: {self.emo_num}, type: {type(self.emo_num)}")
-            raise RuntimeError(f"矩阵分割失败: {e}")
 
         # 后备mel_fn初始化（如果前面失败了）
         if self.mel_fn is None:
