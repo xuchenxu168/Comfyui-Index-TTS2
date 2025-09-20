@@ -267,7 +267,6 @@ class IndexTTS2:
 
                     # 检查GPU内存
                     if self.device.type == 'cuda':
-                        import torch
                         torch.cuda.empty_cache()  # 清理GPU缓存
                         print(f"[IndexTTS2] GPU内存清理完成")
 
@@ -353,7 +352,6 @@ class IndexTTS2:
 
                 # 检查GPU内存
                 if self.device.type == 'cuda':
-                    import torch
                     torch.cuda.empty_cache()  # 清理GPU缓存
                     print(f"[IndexTTS2] GPU内存清理完成")
 
