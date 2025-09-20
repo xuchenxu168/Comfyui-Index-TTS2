@@ -179,16 +179,167 @@ class IndexTTS2:
 
         bigvgan_name = self.cfg.vocoder.name
         # 下载BigVGAN到ComfyUI模型目录
-        bigvgan_kwargs = get_hf_download_kwargs(bigvgan_name)
-        self.bigvgan = bigvgan.BigVGAN.from_pretrained(
-            bigvgan_name,
-            use_cuda_kernel=False,
-            cache_dir=bigvgan_kwargs["cache_dir"]
-        )
-        self.bigvgan = self.bigvgan.to(self.device)
-        self.bigvgan.remove_weight_norm()
-        self.bigvgan.eval()
-        print(">> bigvgan weights restored from:", bigvgan_name)
+        from indextts.utils.model_cache_manager import get_bigvgan_download_kwargs
+        bigvgan_kwargs = get_bigvgan_download_kwargs(bigvgan_name)
+        
+        # 检查本地是否已有BigVGAN模型文件
+        from indextts.utils.model_cache_manager import get_indextts2_cache_dir
+        cache_dir = get_indextts2_cache_dir()
+        
+        # 检查多个可能的本地路径
+        local_bigvgan_paths = [
+            cache_dir / "bigvgan",  # 标准缓存路径
+            cache_dir,  # 直接在external_models目录
+            cache_dir.parent / "bigvgan",  # 上一级目录的bigvgan文件夹
+        ]
+        
+        # 检查HuggingFace缓存格式
+        hf_cache_paths = [
+            cache_dir / "bigvgan" / "models--nvidia--bigvgan_v2_22khz_80band_256x",
+            cache_dir / "bigvgan" / "nvidia_bigvgan_v2_22khz_80band_256x",
+        ]
+        
+        # 查找HuggingFace缓存中的snapshots目录
+        for hf_path in hf_cache_paths:
+            if hf_path.exists():
+                snapshots_dir = hf_path / "snapshots"
+                if snapshots_dir.exists():
+                    for snapshot in snapshots_dir.iterdir():
+                        if snapshot.is_dir():
+                            config_file = snapshot / "config.json"
+                            model_file = snapshot / "bigvgan_generator.pt"
+                            if config_file.exists() and model_file.exists():
+                                local_bigvgan_path = snapshot
+                                print(f"[IndexTTS2] 发现本地BigVGAN模型 (HuggingFace缓存): {local_bigvgan_path}")
+                                break
+                    if local_bigvgan_path:
+                        break
+        
+        # 如果HuggingFace缓存中没有找到，检查直接路径
+        if not local_bigvgan_path:
+            for path in local_bigvgan_paths:
+                config_file = path / "config.json"
+                model_file = path / "bigvgan_generator.pt"
+                if config_file.exists() and model_file.exists():
+                    local_bigvgan_path = path
+                    print(f"[IndexTTS2] 发现本地BigVGAN模型: {local_bigvgan_path}")
+                    break
+        
+        # 添加超时和错误处理的BigVGAN加载
+        print(f"[IndexTTS2] 开始加载BigVGAN模型: {bigvgan_name}")
+        print(f"[IndexTTS2] 缓存目录: {bigvgan_kwargs['cache_dir']}")
+        
+        # 检查系统是否支持signal.SIGALRM (Windows不支持)
+        import threading
+        import platform
+        
+        if platform.system() == "Windows" or not hasattr(signal, 'SIGALRM'):
+            # Windows系统或没有SIGALRM，使用threading超时机制
+            print("[IndexTTS2] 使用threading超时机制 (Windows兼容)")
+            
+            def load_bigvgan_with_timeout():
+                try:
+                    # 优先使用本地路径
+                    if local_bigvgan_path:
+                        print(f"[IndexTTS2] 使用本地BigVGAN模型: {local_bigvgan_path}")
+                        self.bigvgan = bigvgan.BigVGAN.from_pretrained(
+                            str(local_bigvgan_path),  # 使用本地路径
+                            use_cuda_kernel=False,
+                            cache_dir=bigvgan_kwargs["cache_dir"]
+                        )
+                    else:
+                        print(f"[IndexTTS2] 从HuggingFace下载BigVGAN模型: {bigvgan_name}")
+                        self.bigvgan = bigvgan.BigVGAN.from_pretrained(
+                            bigvgan_name,  # 使用远程ID
+                            use_cuda_kernel=False,
+                            cache_dir=bigvgan_kwargs["cache_dir"]
+                        )
+                    return True
+                except Exception as e:
+                    print(f"[ERROR] BigVGAN模型加载失败: {e}")
+                    return False
+            
+            # 使用线程和超时
+            result = [False]
+            exception = [None]
+            
+            def target():
+                try:
+                    result[0] = load_bigvgan_with_timeout()
+                except Exception as e:
+                    exception[0] = e
+            
+            thread = threading.Thread(target=target)
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=300)  # 5分钟超时
+            
+            if thread.is_alive():
+                print("[ERROR] BigVGAN模型加载超时，可能是网络问题")
+                print("[ERROR] 请检查网络连接或尝试使用代理")
+                raise TimeoutError("BigVGAN模型加载超时")
+            
+            if exception[0]:
+                raise exception[0]
+            
+            if not result[0]:
+                raise RuntimeError("BigVGAN模型加载失败")
+            
+            self.bigvgan = self.bigvgan.to(self.device)
+            self.bigvgan.remove_weight_norm()
+            self.bigvgan.eval()
+            print(">> bigvgan weights restored from:", local_bigvgan_path if local_bigvgan_path else bigvgan_name)
+            
+        else:
+            # Unix/Linux系统，使用signal超时机制
+            print("[IndexTTS2] 使用signal超时机制 (Unix/Linux)")
+            
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("BigVGAN模型加载超时")
+            
+            # 设置超时（5分钟）
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(300)  # 5分钟超时
+            
+            try:
+                # 优先使用本地路径
+                if local_bigvgan_path:
+                    print(f"[IndexTTS2] 使用本地BigVGAN模型: {local_bigvgan_path}")
+                    self.bigvgan = bigvgan.BigVGAN.from_pretrained(
+                        str(local_bigvgan_path),  # 使用本地路径
+                        use_cuda_kernel=False,
+                        cache_dir=bigvgan_kwargs["cache_dir"]
+                    )
+                else:
+                    print(f"[IndexTTS2] 从HuggingFace下载BigVGAN模型: {bigvgan_name}")
+                    self.bigvgan = bigvgan.BigVGAN.from_pretrained(
+                        bigvgan_name,  # 使用远程ID
+                        use_cuda_kernel=False,
+                        cache_dir=bigvgan_kwargs["cache_dir"]
+                    )
+                
+                signal.alarm(0)  # 取消超时
+                
+                self.bigvgan = self.bigvgan.to(self.device)
+                self.bigvgan.remove_weight_norm()
+                self.bigvgan.eval()
+                print(">> bigvgan weights restored from:", local_bigvgan_path if local_bigvgan_path else bigvgan_name)
+                
+            except TimeoutError:
+                signal.alarm(0)
+                print("[ERROR] BigVGAN模型加载超时，可能是网络问题")
+                print("[ERROR] 请检查网络连接或尝试使用代理")
+                raise
+            except Exception as e:
+                signal.alarm(0)
+                print(f"[ERROR] BigVGAN模型加载失败: {e}")
+                print(f"[ERROR] 模型名称: {bigvgan_name}")
+                print(f"[ERROR] 缓存目录: {bigvgan_kwargs['cache_dir']}")
+                if local_bigvgan_path:
+                    print(f"[ERROR] 本地路径: {local_bigvgan_path}")
+                raise
 
         self.bpe_path = os.path.join(self.model_dir, self.cfg.dataset["bpe_model"])
         self.normalizer = TextNormalizer()
