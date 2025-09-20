@@ -69,10 +69,11 @@ class IndexTTS2:
         self.dtype = torch.float16 if self.is_fp16 else None
         self.stop_mel_token = self.cfg.gpt.stop_mel_token
 
-        # 进度引用显示（可选）- 提前初始化避免AttributeError
+        # ========== 系统性属性初始化 - 避免所有AttributeError ==========
+        # 进度引用显示（可选）
         self.gr_progress = None
 
-        # 缓存参考音频 - 提前初始化避免AttributeError
+        # 缓存参考音频
         self.cache_spk_cond = None
         self.cache_s2mel_style = None
         self.cache_s2mel_prompt = None
@@ -81,19 +82,48 @@ class IndexTTS2:
         self.cache_emo_audio_prompt = None
         self.cache_mel = None
 
-        # mel_fn函数 - 提前初始化避免AttributeError
-        from indextts.utils.utils import mel_spectrogram
-        mel_fn_args = {
-            "n_fft": self.cfg.s2mel['preprocess_params']['spect_params']['n_fft'],
-            "win_size": self.cfg.s2mel['preprocess_params']['spect_params']['win_length'],
-            "hop_size": self.cfg.s2mel['preprocess_params']['spect_params']['hop_length'],
-            "num_mels": self.cfg.s2mel['preprocess_params']['spect_params']['n_mels'],
-            "sampling_rate": self.cfg.s2mel["preprocess_params"]["sr"],
-            "fmin": self.cfg.s2mel['preprocess_params']['spect_params'].get('fmin', 0),
-            "fmax": None if self.cfg.s2mel['preprocess_params']['spect_params'].get('fmax', "None") == "None" else 8000,
-            "center": False
-        }
-        self.mel_fn = lambda x: mel_spectrogram(x, **mel_fn_args)
+        # 模型相关属性
+        self.semantic_model = None
+        self.semantic_codec = None
+        self.gpt = None
+        self.s2mel = None
+        self.bigvgan = None
+        self.campplus_model = None
+        self.extract_features = None
+        self.normalizer = None
+        self.tokenizer = None
+
+        # 统计和矩阵属性
+        self.semantic_mean = None
+        self.semantic_std = None
+        self.emo_matrix = None
+        self.spk_matrix = None
+        self.emo_num = None
+
+        # mel_fn函数 - 使用正确的导入路径
+        try:
+            from indextts.s2mel.modules.audio import mel_spectrogram
+            mel_fn_args = {
+                "n_fft": self.cfg.s2mel['preprocess_params']['spect_params']['n_fft'],
+                "win_size": self.cfg.s2mel['preprocess_params']['spect_params']['win_length'],
+                "hop_size": self.cfg.s2mel['preprocess_params']['spect_params']['hop_length'],
+                "num_mels": self.cfg.s2mel['preprocess_params']['spect_params']['n_mels'],
+                "sampling_rate": self.cfg.s2mel["preprocess_params"]["sr"],
+                "fmin": self.cfg.s2mel['preprocess_params']['spect_params'].get('fmin', 0),
+                "fmax": None if self.cfg.s2mel['preprocess_params']['spect_params'].get('fmax', "None") == "None" else 8000,
+                "center": False
+            }
+            self.mel_fn = lambda x: mel_spectrogram(x, **mel_fn_args)
+        except ImportError as e:
+            print(f"[WARNING] mel_spectrogram导入失败: {e}")
+            print("[WARNING] 将在后续初始化中重试")
+            self.mel_fn = None
+
+        # 模型版本
+        self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
+
+        print("[IndexTTS2] ✓ 所有关键属性已提前初始化")
+        # ========== 属性初始化完成 ==========
 
         # 检查qwen_emo模型路径是否存在
         qwen_emo_path = os.path.join(self.model_dir, self.cfg.qwen_emo_path)
@@ -769,7 +799,27 @@ class IndexTTS2:
         self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
         self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
 
-        self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
+        # 后备mel_fn初始化（如果前面失败了）
+        if self.mel_fn is None:
+            try:
+                from indextts.s2mel.modules.audio import mel_spectrogram
+                mel_fn_args = {
+                    "n_fft": self.cfg.s2mel['preprocess_params']['spect_params']['n_fft'],
+                    "win_size": self.cfg.s2mel['preprocess_params']['spect_params']['win_length'],
+                    "hop_size": self.cfg.s2mel['preprocess_params']['spect_params']['hop_length'],
+                    "num_mels": self.cfg.s2mel['preprocess_params']['spect_params']['n_mels'],
+                    "sampling_rate": self.cfg.s2mel["preprocess_params"]["sr"],
+                    "fmin": self.cfg.s2mel['preprocess_params']['spect_params'].get('fmin', 0),
+                    "fmax": None if self.cfg.s2mel['preprocess_params']['spect_params'].get('fmax', "None") == "None" else 8000,
+                    "center": False
+                }
+                self.mel_fn = lambda x: mel_spectrogram(x, **mel_fn_args)
+                print("[IndexTTS2] ✓ mel_fn后备初始化成功")
+            except Exception as e:
+                print(f"[ERROR] mel_fn后备初始化也失败: {e}")
+                raise RuntimeError(f"无法初始化mel_fn函数: {e}")
+
+        print("[IndexTTS2] 🎉 IndexTTS2初始化完成！所有属性和模型已就绪")
 
     @torch.no_grad()
     def get_emb(self, input_features, attention_mask):
