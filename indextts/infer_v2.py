@@ -234,9 +234,13 @@ class IndexTTS2:
         import platform
         import signal
         
-        if platform.system() == "Windows" or not hasattr(signal, 'SIGALRM'):
-            # Windows系统或没有SIGALRM，使用threading超时机制
-            print("[IndexTTS2] 使用threading超时机制 (Windows兼容)")
+        # 检查是否在主线程中运行
+        import threading
+        is_main_thread = threading.current_thread() is threading.main_thread()
+        
+        if platform.system() == "Windows" or not hasattr(signal, 'SIGALRM') or not is_main_thread:
+            # Windows系统、没有SIGALRM或不在主线程中，使用threading超时机制
+            print("[IndexTTS2] 使用threading超时机制 (跨平台兼容)")
             
             def load_bigvgan_with_timeout():
                 try:
@@ -292,8 +296,8 @@ class IndexTTS2:
             print(">> bigvgan weights restored from:", local_bigvgan_path if local_bigvgan_path else bigvgan_name)
             
         else:
-            # Unix/Linux系统，使用signal超时机制
-            print("[IndexTTS2] 使用signal超时机制 (Unix/Linux)")
+            # Unix/Linux系统且在主线程中，使用signal超时机制
+            print("[IndexTTS2] 使用signal超时机制 (Unix/Linux主线程)")
             
             import signal
             
