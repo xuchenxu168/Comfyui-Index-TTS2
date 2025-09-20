@@ -807,8 +807,19 @@ class IndexTTS2:
         self.spk_matrix = spk_matrix.to(self.device)
         print("[IndexTTS2] ✓ 说话人矩阵加载完成")
 
-        self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
-        self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
+        # 分割矩阵前进行验证
+        print(f"[IndexTTS2] 准备分割矩阵，emo_num: {self.emo_num}")
+        print(f"[IndexTTS2] emo_matrix shape: {self.emo_matrix.shape}")
+        print(f"[IndexTTS2] spk_matrix shape: {self.spk_matrix.shape}")
+
+        try:
+            self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
+            self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
+            print(f"[IndexTTS2] ✓ 矩阵分割完成，emo_matrix长度: {len(self.emo_matrix)}, spk_matrix长度: {len(self.spk_matrix)}")
+        except Exception as e:
+            print(f"[ERROR] 矩阵分割失败: {e}")
+            print(f"[ERROR] emo_num: {self.emo_num}, type: {type(self.emo_num)}")
+            raise RuntimeError(f"矩阵分割失败: {e}")
 
         # 后备mel_fn初始化（如果前面失败了）
         if self.mel_fn is None:
@@ -1033,6 +1044,16 @@ class IndexTTS2:
             if use_random:
                 random_index = [random.randint(0, x - 1) for x in self.emo_num]
             else:
+                # 验证spk_matrix是否有效
+                if self.spk_matrix is None:
+                    print(f"[ERROR] spk_matrix为None，无法进行相似度计算")
+                    raise RuntimeError("spk_matrix未正确初始化")
+
+                if not isinstance(self.spk_matrix, (list, tuple)):
+                    print(f"[ERROR] spk_matrix类型错误: {type(self.spk_matrix)}")
+                    raise RuntimeError(f"spk_matrix类型错误，期望list/tuple，实际: {type(self.spk_matrix)}")
+
+                print(f"[IndexTTS2] 计算相似度，spk_matrix长度: {len(self.spk_matrix)}")
                 random_index = [find_most_similar_cosine(style, tmp) for tmp in self.spk_matrix]
 
             # 验证索引的有效性，防止索引超出范围
