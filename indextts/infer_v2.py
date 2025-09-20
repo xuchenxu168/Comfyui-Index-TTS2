@@ -81,6 +81,20 @@ class IndexTTS2:
         self.cache_emo_audio_prompt = None
         self.cache_mel = None
 
+        # mel_fn函数 - 提前初始化避免AttributeError
+        from indextts.utils.utils import mel_spectrogram
+        mel_fn_args = {
+            "n_fft": self.cfg.s2mel['preprocess_params']['spect_params']['n_fft'],
+            "win_size": self.cfg.s2mel['preprocess_params']['spect_params']['win_length'],
+            "hop_size": self.cfg.s2mel['preprocess_params']['spect_params']['hop_length'],
+            "num_mels": self.cfg.s2mel['preprocess_params']['spect_params']['n_mels'],
+            "sampling_rate": self.cfg.s2mel["preprocess_params"]["sr"],
+            "fmin": self.cfg.s2mel['preprocess_params']['spect_params'].get('fmin', 0),
+            "fmax": None if self.cfg.s2mel['preprocess_params']['spect_params'].get('fmax', "None") == "None" else 8000,
+            "center": False
+        }
+        self.mel_fn = lambda x: mel_spectrogram(x, **mel_fn_args)
+
         # 检查qwen_emo模型路径是否存在
         qwen_emo_path = os.path.join(self.model_dir, self.cfg.qwen_emo_path)
         if os.path.exists(qwen_emo_path):
@@ -754,18 +768,6 @@ class IndexTTS2:
 
         self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
         self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
-
-        mel_fn_args = {
-            "n_fft": self.cfg.s2mel['preprocess_params']['spect_params']['n_fft'],
-            "win_size": self.cfg.s2mel['preprocess_params']['spect_params']['win_length'],
-            "hop_size": self.cfg.s2mel['preprocess_params']['spect_params']['hop_length'],
-            "num_mels": self.cfg.s2mel['preprocess_params']['spect_params']['n_mels'],
-            "sampling_rate": self.cfg.s2mel["preprocess_params"]["sr"],
-            "fmin": self.cfg.s2mel['preprocess_params']['spect_params'].get('fmin', 0),
-            "fmax": None if self.cfg.s2mel['preprocess_params']['spect_params'].get('fmax', "None") == "None" else 8000,
-            "center": False
-        }
-        self.mel_fn = lambda x: mel_spectrogram(x, **mel_fn_args)
 
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
 
