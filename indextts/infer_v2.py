@@ -185,7 +185,10 @@ class IndexTTS2:
         # 检查本地是否已有BigVGAN模型文件
         from indextts.utils.model_cache_manager import get_indextts2_cache_dir
         cache_dir = get_indextts2_cache_dir()
-        
+
+        # 初始化local_bigvgan_path变量
+        local_bigvgan_path = None
+
         # 检查多个可能的本地路径
         local_bigvgan_paths = [
             cache_dir / "bigvgan",  # 标准缓存路径
