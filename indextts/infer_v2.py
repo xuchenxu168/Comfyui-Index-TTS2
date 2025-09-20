@@ -788,6 +788,12 @@ class IndexTTS2:
                 else:
                     return self.en_normalizer.normalize(text)
 
+            def load(self):
+                """兼容原始TextNormalizer接口的load方法"""
+                # 简化版本不需要加载外部资源，直接返回
+                print("[IndexTTS2] ✓ EnhancedFallbackTextNormalizer.load() 完成（无需加载外部资源）")
+                pass
+
         return EnhancedFallbackTextNormalizer()
 
         print(f"[IndexTTS2] 开始加载情感矩阵: {self.cfg.emo_matrix}")
