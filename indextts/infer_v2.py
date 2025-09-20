@@ -262,6 +262,30 @@ class IndexTTS2:
                             use_cuda_kernel=False,
                             cache_dir=bigvgan_kwargs["cache_dir"]
                         )
+
+                    print("[IndexTTS2] 开始后处理BigVGAN模型...")
+
+                    # 检查GPU内存
+                    if self.device.type == 'cuda':
+                        import torch
+                        torch.cuda.empty_cache()  # 清理GPU缓存
+                        print(f"[IndexTTS2] GPU内存清理完成")
+
+                    # 移动模型到设备
+                    print(f"[IndexTTS2] 将BigVGAN模型移动到设备: {self.device}")
+                    self.bigvgan = self.bigvgan.to(self.device)
+                    print("[IndexTTS2] ✓ 模型移动完成")
+
+                    # 移除权重归一化
+                    print("[IndexTTS2] 移除权重归一化...")
+                    self.bigvgan.remove_weight_norm()
+                    print("[IndexTTS2] ✓ 权重归一化移除完成")
+
+                    # 设置为评估模式
+                    print("[IndexTTS2] 设置模型为评估模式...")
+                    self.bigvgan.eval()
+                    print("[IndexTTS2] ✓ 评估模式设置完成")
+
                     return True
                 except Exception as e:
                     print(f"[ERROR] BigVGAN模型加载失败: {e}")
@@ -292,10 +316,7 @@ class IndexTTS2:
             
             if not result[0]:
                 raise RuntimeError("BigVGAN模型加载失败")
-            
-            self.bigvgan = self.bigvgan.to(self.device)
-            self.bigvgan.remove_weight_norm()
-            self.bigvgan.eval()
+
             print(">> bigvgan weights restored from:", local_bigvgan_path if local_bigvgan_path else bigvgan_name)
             
         else:
@@ -327,12 +348,32 @@ class IndexTTS2:
                         use_cuda_kernel=False,
                         cache_dir=bigvgan_kwargs["cache_dir"]
                     )
-                
-                signal.alarm(0)  # 取消超时
-                
+
+                print("[IndexTTS2] 开始后处理BigVGAN模型...")
+
+                # 检查GPU内存
+                if self.device.type == 'cuda':
+                    import torch
+                    torch.cuda.empty_cache()  # 清理GPU缓存
+                    print(f"[IndexTTS2] GPU内存清理完成")
+
+                # 移动模型到设备
+                print(f"[IndexTTS2] 将BigVGAN模型移动到设备: {self.device}")
                 self.bigvgan = self.bigvgan.to(self.device)
+                print("[IndexTTS2] ✓ 模型移动完成")
+
+                # 移除权重归一化
+                print("[IndexTTS2] 移除权重归一化...")
                 self.bigvgan.remove_weight_norm()
+                print("[IndexTTS2] ✓ 权重归一化移除完成")
+
+                # 设置为评估模式
+                print("[IndexTTS2] 设置模型为评估模式...")
                 self.bigvgan.eval()
+                print("[IndexTTS2] ✓ 评估模式设置完成")
+
+                signal.alarm(0)  # 取消超时
+
                 print(">> bigvgan weights restored from:", local_bigvgan_path if local_bigvgan_path else bigvgan_name)
                 
             except TimeoutError:
