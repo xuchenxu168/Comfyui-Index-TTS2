@@ -232,6 +232,7 @@ class IndexTTS2:
         # 检查系统是否支持signal.SIGALRM (Windows不支持)
         import threading
         import platform
+        import signal
         
         if platform.system() == "Windows" or not hasattr(signal, 'SIGALRM'):
             # Windows系统或没有SIGALRM，使用threading超时机制
