@@ -98,10 +98,31 @@ def get_hf_download_kwargs(model_id: str) -> dict:
     """获取HuggingFace下载的标准参数"""
     cache_dir = get_model_cache_path(model_id)
     
+    # 检查是否设置了HuggingFace镜像
+    hf_endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co")
+    if "hf-mirror.com" in hf_endpoint:
+        print(f"[IndexTTS2] 使用HuggingFace镜像: {hf_endpoint}")
+    
     return {
         "cache_dir": str(cache_dir),
         "local_files_only": False,
         "resume_download": True,
+    }
+
+def get_bigvgan_download_kwargs(model_id: str) -> dict:
+    """获取BigVGAN下载的参数（包含超时设置）"""
+    cache_dir = get_model_cache_path(model_id)
+    
+    # 检查是否设置了HuggingFace镜像
+    hf_endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co")
+    if "hf-mirror.com" in hf_endpoint:
+        print(f"[IndexTTS2] 使用HuggingFace镜像: {hf_endpoint}")
+    
+    return {
+        "cache_dir": str(cache_dir),
+        "local_files_only": False,
+        "resume_download": True,
+        "timeout": 300,  # 5分钟超时，仅用于BigVGAN
     }
 
 def print_cache_info():
@@ -143,5 +164,6 @@ __all__ = [
     'get_model_cache_path',
     'setup_hf_cache_env',
     'get_hf_download_kwargs',
+    'get_bigvgan_download_kwargs',
     'print_cache_info'
 ]
