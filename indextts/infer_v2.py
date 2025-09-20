@@ -565,18 +565,65 @@ class IndexTTS2:
             print(f"[ERROR] 配置中的BPE文件名: {bpe_filename}")
             raise FileNotFoundError(f"BPE模型文件未找到: {bpe_filename}")
 
+        print("[IndexTTS2] 开始创建TextNormalizer...")
         self.normalizer = TextNormalizer()
-        self.normalizer.load()
+        print("[IndexTTS2] ✓ TextNormalizer实例创建完成")
+
+        print("[IndexTTS2] 开始加载TextNormalizer...")
+        print("[IndexTTS2] 注意: TextNormalizer加载可能需要一些时间来构建tagger规则...")
+
+        # 添加超时保护
+        import threading
+        import time
+
+        normalizer_loaded = [False]
+        normalizer_exception = [None]
+
+        def load_normalizer():
+            try:
+                self.normalizer.load()
+                normalizer_loaded[0] = True
+            except Exception as e:
+                normalizer_exception[0] = e
+
+        print("[IndexTTS2] 使用线程加载TextNormalizer（120秒超时）...")
+        thread = threading.Thread(target=load_normalizer)
+        thread.daemon = True
+        thread.start()
+        thread.join(timeout=120)  # 2分钟超时
+
+        if thread.is_alive():
+            print("[ERROR] TextNormalizer加载超时（超过120秒）")
+            print("[ERROR] 这可能是由于tagger规则构建过程卡住")
+            print("[ERROR] 建议检查WeTextProcessing安装或使用wetext替代")
+            raise TimeoutError("TextNormalizer加载超时")
+
+        if normalizer_exception[0]:
+            print(f"[ERROR] TextNormalizer加载失败: {normalizer_exception[0]}")
+            raise normalizer_exception[0]
+
+        if not normalizer_loaded[0]:
+            print("[ERROR] TextNormalizer加载失败，原因未知")
+            raise RuntimeError("TextNormalizer加载失败")
+
+        print("[IndexTTS2] ✓ TextNormalizer加载完成")
         print(">> TextNormalizer loaded")
+
+        print(f"[IndexTTS2] 开始创建TextTokenizer，BPE路径: {self.bpe_path}")
         self.tokenizer = TextTokenizer(self.bpe_path, self.normalizer)
+        print("[IndexTTS2] ✓ TextTokenizer创建完成")
         print(">> bpe model loaded from:", self.bpe_path)
 
+        print(f"[IndexTTS2] 开始加载情感矩阵: {self.cfg.emo_matrix}")
         emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
         self.emo_matrix = emo_matrix.to(self.device)
         self.emo_num = list(self.cfg.emo_num)
+        print("[IndexTTS2] ✓ 情感矩阵加载完成")
 
+        print(f"[IndexTTS2] 开始加载说话人矩阵: {self.cfg.spk_matrix}")
         spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
         self.spk_matrix = spk_matrix.to(self.device)
+        print("[IndexTTS2] ✓ 说话人矩阵加载完成")
 
         self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
         self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
