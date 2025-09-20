@@ -122,10 +122,7 @@ class IndexTTS2:
         # 模型版本
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
 
-        print("[IndexTTS2] ✓ 所有关键属性已提前初始化")
-        # ========== 属性初始化完成 ==========
-
-        print("[IndexTTS2] 🚀 开始IndexTTS2完整初始化流程...")
+        print("[IndexTTS2] ✓ 属性初始化完成")
 
         # 检查qwen_emo模型路径是否存在
         qwen_emo_path = os.path.join(self.model_dir, self.cfg.qwen_emo_path)
@@ -645,8 +642,6 @@ class IndexTTS2:
             print(f"[ERROR] 创建TextTokenizer失败: {e}")
             raise RuntimeError(f"TextTokenizer初始化失败: {e}")
 
-        print("[IndexTTS2] 📝 文本处理组件初始化完成，开始加载模型...")
-
         # 加载情感和说话人矩阵
         try:
             print(f"[IndexTTS2] 开始加载情感矩阵: {self.cfg.emo_matrix}")
@@ -660,19 +655,14 @@ class IndexTTS2:
             self.spk_matrix = spk_matrix.to(self.device)
             print("[IndexTTS2] ✓ 说话人矩阵加载完成")
 
-            # 分割矩阵前进行验证
-            print(f"[IndexTTS2] 准备分割矩阵，emo_num: {self.emo_num}")
-            print(f"[IndexTTS2] emo_matrix shape: {self.emo_matrix.shape}")
-            print(f"[IndexTTS2] spk_matrix shape: {self.spk_matrix.shape}")
-
             # 执行矩阵分割
             self.emo_matrix = torch.split(self.emo_matrix, self.emo_num)
             self.spk_matrix = torch.split(self.spk_matrix, self.emo_num)
-            print(f"[IndexTTS2] ✓ 矩阵分割完成，emo_matrix长度: {len(self.emo_matrix)}, spk_matrix长度: {len(self.spk_matrix)}")
+            print(f"[IndexTTS2] ✓ 矩阵分割完成")
 
         except Exception as e:
-            print(f"[ERROR] 矩阵加载或分割失败: {e}")
-            raise RuntimeError(f"矩阵加载或分割失败: {e}")
+            print(f"[ERROR] 矩阵加载失败: {e}")
+            raise RuntimeError(f"矩阵加载失败: {e}")
 
     def _create_fallback_normalizer(self):
         """创建一个增强的TextNormalizer作为回退方案，包含数字转换功能"""
@@ -822,7 +812,6 @@ class IndexTTS2:
             def load(self):
                 """兼容原始TextNormalizer接口的load方法"""
                 # 简化版本不需要加载外部资源，直接返回
-                print("[IndexTTS2] ✓ EnhancedFallbackTextNormalizer.load() 完成（无需加载外部资源）")
                 pass
 
         return EnhancedFallbackTextNormalizer()
@@ -849,7 +838,7 @@ class IndexTTS2:
                 print(f"[ERROR] mel_fn后备初始化也失败: {e}")
                 raise RuntimeError(f"无法初始化mel_fn函数: {e}")
 
-        print("[IndexTTS2] 🎉 IndexTTS2初始化完成！所有属性和模型已就绪")
+        print("[IndexTTS2] ✓ IndexTTS2初始化完成")
 
     @torch.no_grad()
     def get_emb(self, input_features, attention_mask):
@@ -1054,14 +1043,11 @@ class IndexTTS2:
             else:
                 # 验证spk_matrix是否有效
                 if self.spk_matrix is None:
-                    print(f"[ERROR] spk_matrix为None，无法进行相似度计算")
                     raise RuntimeError("spk_matrix未正确初始化")
 
                 if not isinstance(self.spk_matrix, (list, tuple)):
-                    print(f"[ERROR] spk_matrix类型错误: {type(self.spk_matrix)}")
                     raise RuntimeError(f"spk_matrix类型错误，期望list/tuple，实际: {type(self.spk_matrix)}")
 
-                print(f"[IndexTTS2] 计算相似度，spk_matrix长度: {len(self.spk_matrix)}")
                 random_index = [find_most_similar_cosine(style, tmp) for tmp in self.spk_matrix]
 
             # 验证索引的有效性，防止索引超出范围
