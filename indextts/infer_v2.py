@@ -941,7 +941,6 @@ class IndexTTS2:
               emo_vector=None,
               use_emo_text=False, emo_text=None, use_random=False, interval_silence=200,
               verbose=False, max_text_tokens_per_sentence=120, **generation_kwargs):
-        print(">> start inference...")
         self._set_gr_progress(0, "start inference...")
         if verbose:
             print(f"origin text:{text}, spk_audio_prompt:{spk_audio_prompt},"
@@ -1019,24 +1018,17 @@ class IndexTTS2:
             ref_mel = self.cache_mel
 
         if emo_vector is not None:
-            print(f"[IndexTTS2] Processing emotion vector: {emo_vector}")
             weight_vector = torch.tensor(emo_vector).to(self.device)
 
             # 验证情感向量的有效性
             weight_sum = torch.sum(weight_vector)
-            print(f"[IndexTTS2] Emotion vector sum: {weight_sum:.6f}")
-            print(f"[IndexTTS2] Individual values: {[f'{v:.6f}' for v in emo_vector]}")
 
             if weight_sum <= 0.001:
-                print("[IndexTTS2] Warning: emotion vector sum is near zero, using default neutral emotion")
                 # 设置默认的中性情感
                 weight_vector = torch.zeros_like(weight_vector)
                 weight_vector[7] = 0.2  # Neutral emotion
             elif weight_sum > 2.0:
-                print(f"[IndexTTS2] Warning: emotion vector sum is {weight_sum:.3f}, normalizing")
                 weight_vector = weight_vector / weight_sum * 1.0  # 归一化到合理范围
-
-            print(f"[IndexTTS2] Final weight_vector: {weight_vector.tolist()}")
 
             if use_random:
                 random_index = [random.randint(0, x - 1) for x in self.emo_num]
