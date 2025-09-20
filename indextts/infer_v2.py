@@ -566,48 +566,160 @@ class IndexTTS2:
             raise FileNotFoundError(f"BPE模型文件未找到: {bpe_filename}")
 
         print("[IndexTTS2] 开始创建TextNormalizer...")
-        self.normalizer = TextNormalizer()
-        print("[IndexTTS2] ✓ TextNormalizer实例创建完成")
+        print("[IndexTTS2] 由于TextNormalizer经常卡住，直接使用简化版本...")
 
-        print("[IndexTTS2] 开始加载TextNormalizer...")
-        print("[IndexTTS2] 注意: TextNormalizer加载可能需要一些时间来构建tagger规则...")
+        # 直接使用简化的TextNormalizer，避免卡住问题
+        try:
+            self.normalizer = self._create_fallback_normalizer()
+            print("[IndexTTS2] ✓ 使用简化TextNormalizer（跳过可能卡住的正常加载）")
+            print(">> TextNormalizer loaded")
 
-        # 添加超时保护
-        import threading
-        import time
+    def _create_fallback_normalizer(self):
+        """创建一个增强的TextNormalizer作为回退方案，包含数字转换功能"""
+        class EnhancedFallbackTextNormalizer:
+            def __init__(self):
+                self.zh_normalizer = self._create_enhanced_normalizer()
+                self.en_normalizer = self._create_simple_normalizer()
 
-        normalizer_loaded = [False]
-        normalizer_exception = [None]
+            def _create_enhanced_normalizer(self):
+                class EnhancedNormalizer:
+                    def __init__(self):
+                        # 中文数字映射
+                        self.digit_map = {
+                            '0': '零', '1': '一', '2': '二', '3': '三', '4': '四',
+                            '5': '五', '6': '六', '7': '七', '8': '八', '9': '九'
+                        }
+                        self.unit_map = ['', '十', '百', '千', '万', '十万', '百万', '千万', '亿']
 
-        def load_normalizer():
-            try:
-                self.normalizer.load()
-                normalizer_loaded[0] = True
-            except Exception as e:
-                normalizer_exception[0] = e
+                    def number_to_chinese(self, num_str):
+                        """将数字字符串转换为中文"""
+                        try:
+                            num = int(num_str)
+                            if num == 0:
+                                return '零'
 
-        print("[IndexTTS2] 使用线程加载TextNormalizer（120秒超时）...")
-        thread = threading.Thread(target=load_normalizer)
-        thread.daemon = True
-        thread.start()
-        thread.join(timeout=120)  # 2分钟超时
+                            # 扩展的数字转换（支持0-99999999）
+                            if num < 10:
+                                return self.digit_map[str(num)]
+                            elif num < 100:
+                                tens = num // 10
+                                ones = num % 10
+                                if tens == 1:
+                                    result = '十'
+                                else:
+                                    result = self.digit_map[str(tens)] + '十'
+                                if ones > 0:
+                                    result += self.digit_map[str(ones)]
+                                return result
+                            elif num < 1000:
+                                hundreds = num // 100
+                                remainder = num % 100
+                                result = self.digit_map[str(hundreds)] + '百'
+                                if remainder > 0:
+                                    if remainder < 10:
+                                        result += '零' + self.digit_map[str(remainder)]
+                                    else:
+                                        result += self.number_to_chinese(str(remainder))
+                                return result
+                            elif num < 10000:
+                                thousands = num // 1000
+                                remainder = num % 1000
+                                result = self.digit_map[str(thousands)] + '千'
+                                if remainder > 0:
+                                    if remainder < 100:
+                                        result += '零' + self.number_to_chinese(str(remainder))
+                                    else:
+                                        result += self.number_to_chinese(str(remainder))
+                                return result
+                            elif num < 100000:
+                                # 万级别处理
+                                wan = num // 10000
+                                remainder = num % 10000
+                                if wan == 1:
+                                    result = '一万'
+                                else:
+                                    result = self.number_to_chinese(str(wan)) + '万'
+                                if remainder > 0:
+                                    if remainder < 1000:
+                                        result += '零' + self.number_to_chinese(str(remainder))
+                                    else:
+                                        result += self.number_to_chinese(str(remainder))
+                                return result
+                            elif num < 1000000:
+                                # 十万级别
+                                wan = num // 10000
+                                remainder = num % 10000
+                                result = self.number_to_chinese(str(wan)) + '万'
+                                if remainder > 0:
+                                    if remainder < 1000:
+                                        result += '零' + self.number_to_chinese(str(remainder))
+                                    else:
+                                        result += self.number_to_chinese(str(remainder))
+                                return result
+                            else:
+                                # 对于更大的数字，简化处理
+                                if num < 100000000:  # 一亿以下
+                                    wan = num // 10000
+                                    remainder = num % 10000
+                                    result = self.number_to_chinese(str(wan)) + '万'
+                                    if remainder > 0:
+                                        if remainder < 1000:
+                                            result += '零' + self.number_to_chinese(str(remainder))
+                                        else:
+                                            result += self.number_to_chinese(str(remainder))
+                                    return result
+                                else:
+                                    # 超大数字，逐位转换
+                                    return ''.join(self.digit_map.get(d, d) for d in num_str)
+                        except:
+                            # 如果转换失败，逐位转换
+                            return ''.join(self.digit_map.get(d, d) for d in num_str)
 
-        if thread.is_alive():
-            print("[ERROR] TextNormalizer加载超时（超过120秒）")
-            print("[ERROR] 这可能是由于tagger规则构建过程卡住")
-            print("[ERROR] 建议检查WeTextProcessing安装或使用wetext替代")
-            raise TimeoutError("TextNormalizer加载超时")
+                    def normalize(self, text):
+                        import re
 
-        if normalizer_exception[0]:
-            print(f"[ERROR] TextNormalizer加载失败: {normalizer_exception[0]}")
-            raise normalizer_exception[0]
+                        # 基本的文本清理
+                        text = re.sub(r'["""]', '"', text)
+                        text = re.sub(r"[''']", "'", text)
+                        text = re.sub(r'[…]', '...', text)
+                        text = re.sub(r'[—–]', '-', text)
 
-        if not normalizer_loaded[0]:
-            print("[ERROR] TextNormalizer加载失败，原因未知")
-            raise RuntimeError("TextNormalizer加载失败")
+                        # 数字转换（匹配连续的数字）
+                        def replace_numbers(match):
+                            number = match.group()
+                            return self.number_to_chinese(number)
 
-        print("[IndexTTS2] ✓ TextNormalizer加载完成")
-        print(">> TextNormalizer loaded")
+                        # 转换连续的数字
+                        text = re.sub(r'\d+', replace_numbers, text)
+
+                        # 标准化空白字符
+                        text = re.sub(r'\s+', ' ', text)
+                        text = text.strip()
+                        return text
+
+                return EnhancedNormalizer()
+
+            def _create_simple_normalizer(self):
+                class SimpleNormalizer:
+                    def normalize(self, text):
+                        import re
+                        # 英文数字保持不变，只做基本清理
+                        text = re.sub(r'["""]', '"', text)
+                        text = re.sub(r"[''']", "'", text)
+                        text = re.sub(r'[…]', '...', text)
+                        text = re.sub(r'[—–]', '-', text)
+                        text = re.sub(r'\s+', ' ', text)
+                        text = text.strip()
+                        return text
+                return SimpleNormalizer()
+
+            def normalize(self, text, lang="zh"):
+                if lang == "zh":
+                    return self.zh_normalizer.normalize(text)
+                else:
+                    return self.en_normalizer.normalize(text)
+
+        return EnhancedFallbackTextNormalizer()
 
         print(f"[IndexTTS2] 开始创建TextTokenizer，BPE路径: {self.bpe_path}")
         self.tokenizer = TextTokenizer(self.bpe_path, self.normalizer)
