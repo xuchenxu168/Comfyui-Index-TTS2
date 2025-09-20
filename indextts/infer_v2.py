@@ -573,6 +573,9 @@ class IndexTTS2:
             self.normalizer = self._create_fallback_normalizer()
             print("[IndexTTS2] ✓ 使用简化TextNormalizer（跳过可能卡住的正常加载）")
             print(">> TextNormalizer loaded")
+        except Exception as e:
+            print(f"[ERROR] 创建简化TextNormalizer失败: {e}")
+            raise RuntimeError(f"TextNormalizer初始化失败: {e}")
 
     def _create_fallback_normalizer(self):
         """创建一个增强的TextNormalizer作为回退方案，包含数字转换功能"""
