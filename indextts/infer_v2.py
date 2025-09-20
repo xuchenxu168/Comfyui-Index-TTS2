@@ -69,6 +69,9 @@ class IndexTTS2:
         self.dtype = torch.float16 if self.is_fp16 else None
         self.stop_mel_token = self.cfg.gpt.stop_mel_token
 
+        # 进度引用显示（可选）- 提前初始化避免AttributeError
+        self.gr_progress = None
+
         # 检查qwen_emo模型路径是否存在
         qwen_emo_path = os.path.join(self.model_dir, self.cfg.qwen_emo_path)
         if os.path.exists(qwen_emo_path):
@@ -764,8 +767,6 @@ class IndexTTS2:
         self.cache_emo_audio_prompt = None
         self.cache_mel = None
 
-        # 进度引用显示（可选）
-        self.gr_progress = None
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
 
     @torch.no_grad()
