@@ -867,31 +867,19 @@ class IndexTTS2MultiTalkNode:
             if not hasattr(self, '_model_cache'):
                 self._model_cache = {}
 
-            # 临时强制清除缓存，确保使用新实例进行调试
-            if cache_key in self._model_cache:
-                print(f"[MultiTalk] 🧹 强制清除缓存进行调试 (key: {cache_key})")
-                del self._model_cache[cache_key]
+
 
             if cache_key in self._model_cache:
                 cached_model = self._model_cache[cache_key]
-                # 强化验证缓存的模型是否完全有效
-                print(f"[MultiTalk] 🔍 检查缓存模型状态 (key: {cache_key})")
-                print(f"[MultiTalk] - hasattr spk_matrix: {hasattr(cached_model, 'spk_matrix')}")
-                if hasattr(cached_model, 'spk_matrix'):
-                    print(f"[MultiTalk] - spk_matrix is None: {cached_model.spk_matrix is None}")
-                    if cached_model.spk_matrix is not None:
-                        print(f"[MultiTalk] - spk_matrix type: {type(cached_model.spk_matrix)}")
-                        if isinstance(cached_model.spk_matrix, (list, tuple)):
-                            print(f"[MultiTalk] - spk_matrix length: {len(cached_model.spk_matrix)}")
-
+                # 验证缓存的模型是否有效
                 if (hasattr(cached_model, 'spk_matrix') and
                     cached_model.spk_matrix is not None and
                     isinstance(cached_model.spk_matrix, (list, tuple)) and
                     len(cached_model.spk_matrix) > 0):
-                    print(f"[MultiTalk] ✓ 使用缓存的模型实例 (key: {cache_key})")
+                    print(f"[MultiTalk] ✓ 使用缓存的模型实例")
                     return cached_model
                 else:
-                    print(f"[MultiTalk] ⚠️ 缓存的模型实例无效，重新创建 (key: {cache_key})")
+                    print(f"[MultiTalk] ⚠️ 缓存的模型实例无效，重新创建")
                     if cache_key in self._model_cache:
                         del self._model_cache[cache_key]
 
@@ -903,7 +891,7 @@ class IndexTTS2MultiTalkNode:
 
             model_dir, config_path = get_indextts2_model_path()
 
-            print(f"[MultiTalk] 创建新的模型实例，使用模型路径: {model_dir}")
+            print(f"[MultiTalk] 创建模型实例，路径: {model_dir}")
 
             # 验证模型路径
             validate_model_path(model_dir, config_path)
@@ -915,25 +903,15 @@ class IndexTTS2MultiTalkNode:
                 use_cuda_kernel=use_cuda_kernel
             )
 
-            # 强化验证模型初始化是否成功
-            print(f"[MultiTalk] 🔍 验证新创建的模型状态:")
-            print(f"[MultiTalk] - hasattr spk_matrix: {hasattr(model, 'spk_matrix')}")
-            if hasattr(model, 'spk_matrix'):
-                print(f"[MultiTalk] - spk_matrix is None: {model.spk_matrix is None}")
-                if model.spk_matrix is not None:
-                    print(f"[MultiTalk] - spk_matrix type: {type(model.spk_matrix)}")
-                    if isinstance(model.spk_matrix, (list, tuple)):
-                        print(f"[MultiTalk] - spk_matrix length: {len(model.spk_matrix)}")
-
+            # 验证模型初始化是否成功
             if (hasattr(model, 'spk_matrix') and
                 model.spk_matrix is not None and
                 isinstance(model.spk_matrix, (list, tuple)) and
                 len(model.spk_matrix) > 0):
-                print(f"[MultiTalk] ✓ 模型初始化成功，缓存实例 (key: {cache_key})")
+                print(f"[MultiTalk] ✓ 模型初始化成功，缓存实例")
                 self._model_cache[cache_key] = model
             else:
-                print(f"[MultiTalk] ⚠️ 模型初始化不完整，spk_matrix状态异常")
-                print(f"[MultiTalk] ⚠️ 不缓存此实例，但仍然返回供使用")
+                print(f"[MultiTalk] ⚠️ 模型初始化不完整，不缓存此实例")
 
             return model
 
