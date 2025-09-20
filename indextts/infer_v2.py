@@ -123,12 +123,66 @@ class IndexTTS2:
                 print(">> Failed to load custom CUDA kernel for BigVGAN. Falling back to torch.")
                 self.use_cuda_kernel = False
 
-        # 使用统一的缓存管理器下载到ComfyUI模型目录
-        from indextts.utils.model_cache_manager import get_hf_download_kwargs
-        w2v_kwargs = get_hf_download_kwargs("facebook/w2v-bert-2.0")
-        self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(
-            "facebook/w2v-bert-2.0", **w2v_kwargs
-        )
+        # 检查本地是否已有w2v-bert模型文件
+        from indextts.utils.model_cache_manager import get_indextts2_cache_dir
+        cache_dir = get_indextts2_cache_dir()
+
+        # 初始化local_w2v_path变量
+        local_w2v_path = None
+
+        # 检查多个可能的本地路径
+        local_w2v_paths = [
+            cache_dir / "w2v_bert",  # 标准缓存路径
+            cache_dir,  # 直接在external_models目录
+            cache_dir.parent / "w2v_bert",  # 上一级目录的w2v_bert文件夹
+        ]
+
+        # 检查HuggingFace缓存格式
+        hf_cache_paths = [
+            cache_dir / "w2v_bert" / "models--facebook--w2v-bert-2.0",
+            cache_dir / "w2v_bert" / "facebook_w2v-bert-2.0",
+        ]
+
+        # 查找HuggingFace缓存中的snapshots目录
+        for hf_path in hf_cache_paths:
+            if hf_path.exists():
+                snapshots_dir = hf_path / "snapshots"
+                if snapshots_dir.exists():
+                    for snapshot in snapshots_dir.iterdir():
+                        if snapshot.is_dir():
+                            config_file = snapshot / "config.json"
+                            model_file = snapshot / "model.safetensors"
+                            if config_file.exists() and model_file.exists():
+                                local_w2v_path = snapshot
+                                print(f"[IndexTTS2] 发现本地w2v-bert模型 (HuggingFace缓存): {local_w2v_path}")
+                                break
+                    if local_w2v_path:
+                        break
+
+        # 如果HuggingFace缓存中没有找到，检查直接路径
+        if not local_w2v_path:
+            for path in local_w2v_paths:
+                config_file = path / "config.json"
+                model_file = path / "model.safetensors"
+                if config_file.exists() and model_file.exists():
+                    local_w2v_path = path
+                    print(f"[IndexTTS2] 发现本地w2v-bert模型: {local_w2v_path}")
+                    break
+
+        # 加载SeamlessM4TFeatureExtractor
+        if local_w2v_path:
+            print(f"[IndexTTS2] 使用本地w2v-bert模型: {local_w2v_path}")
+            self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(
+                str(local_w2v_path),
+                local_files_only=True
+            )
+        else:
+            print(f"[IndexTTS2] 本地未找到w2v-bert模型，尝试从远程下载...")
+            from indextts.utils.model_cache_manager import get_hf_download_kwargs
+            w2v_kwargs = get_hf_download_kwargs("facebook/w2v-bert-2.0")
+            self.extract_features = SeamlessM4TFeatureExtractor.from_pretrained(
+                "facebook/w2v-bert-2.0", **w2v_kwargs
+            )
         self.semantic_model, self.semantic_mean, self.semantic_std = build_semantic_model(
             os.path.join(self.model_dir, self.cfg.w2v_stat))
         self.semantic_model = self.semantic_model.to(self.device)
@@ -137,13 +191,43 @@ class IndexTTS2:
         self.semantic_std = self.semantic_std.to(self.device)
 
         semantic_codec = build_semantic_codec(self.cfg.semantic_codec)
-        # 下载MaskGCT语义编解码器到ComfyUI模型目录
-        maskgct_kwargs = get_hf_download_kwargs("amphion/MaskGCT")
-        semantic_code_ckpt = hf_hub_download(
-            "amphion/MaskGCT",
-            filename="semantic_codec/model.safetensors",
-            **maskgct_kwargs
-        )
+
+        # 检查本地是否已有MaskGCT语义编解码器
+        local_maskgct_path = None
+
+        # 检查HuggingFace缓存格式
+        maskgct_cache_paths = [
+            cache_dir / "maskgct" / "models--amphion--MaskGCT",
+            cache_dir / "maskgct" / "amphion_MaskGCT",
+        ]
+
+        # 查找HuggingFace缓存中的snapshots目录
+        for hf_path in maskgct_cache_paths:
+            if hf_path.exists():
+                snapshots_dir = hf_path / "snapshots"
+                if snapshots_dir.exists():
+                    for snapshot in snapshots_dir.iterdir():
+                        if snapshot.is_dir():
+                            semantic_codec_file = snapshot / "semantic_codec" / "model.safetensors"
+                            if semantic_codec_file.exists():
+                                local_maskgct_path = semantic_codec_file
+                                print(f"[IndexTTS2] 发现本地MaskGCT语义编解码器: {local_maskgct_path}")
+                                break
+                    if local_maskgct_path:
+                        break
+
+        # 加载MaskGCT语义编解码器
+        if local_maskgct_path:
+            print(f"[IndexTTS2] 使用本地MaskGCT语义编解码器: {local_maskgct_path}")
+            semantic_code_ckpt = str(local_maskgct_path)
+        else:
+            print(f"[IndexTTS2] 本地未找到MaskGCT语义编解码器，尝试从远程下载...")
+            maskgct_kwargs = get_hf_download_kwargs("amphion/MaskGCT")
+            semantic_code_ckpt = hf_hub_download(
+                "amphion/MaskGCT",
+                filename="semantic_codec/model.safetensors",
+                **maskgct_kwargs
+            )
         safetensors.torch.load_model(semantic_codec, semantic_code_ckpt)
         self.semantic_codec = semantic_codec.to(self.device)
         self.semantic_codec.eval()
@@ -164,13 +248,42 @@ class IndexTTS2:
         self.s2mel.eval()
         print(">> s2mel weights restored from:", s2mel_path)
 
-        # load campplus_model - 下载到ComfyUI模型目录
-        campplus_kwargs = get_hf_download_kwargs("funasr/campplus")
-        campplus_ckpt_path = hf_hub_download(
-            "funasr/campplus",
-            filename="campplus_cn_common.bin",
-            **campplus_kwargs
-        )
+        # 检查本地是否已有CAMPPlus模型
+        local_campplus_path = None
+
+        # 检查HuggingFace缓存格式
+        campplus_cache_paths = [
+            cache_dir / "campplus" / "models--funasr--campplus",
+            cache_dir / "campplus" / "funasr_campplus",
+        ]
+
+        # 查找HuggingFace缓存中的snapshots目录
+        for hf_path in campplus_cache_paths:
+            if hf_path.exists():
+                snapshots_dir = hf_path / "snapshots"
+                if snapshots_dir.exists():
+                    for snapshot in snapshots_dir.iterdir():
+                        if snapshot.is_dir():
+                            campplus_file = snapshot / "campplus_cn_common.bin"
+                            if campplus_file.exists():
+                                local_campplus_path = campplus_file
+                                print(f"[IndexTTS2] 发现本地CAMPPlus模型: {local_campplus_path}")
+                                break
+                    if local_campplus_path:
+                        break
+
+        # 加载CAMPPlus模型
+        if local_campplus_path:
+            print(f"[IndexTTS2] 使用本地CAMPPlus模型: {local_campplus_path}")
+            campplus_ckpt_path = str(local_campplus_path)
+        else:
+            print(f"[IndexTTS2] 本地未找到CAMPPlus模型，尝试从远程下载...")
+            campplus_kwargs = get_hf_download_kwargs("funasr/campplus")
+            campplus_ckpt_path = hf_hub_download(
+                "funasr/campplus",
+                filename="campplus_cn_common.bin",
+                **campplus_kwargs
+            )
         campplus_model = CAMPPlus(feat_dim=80, embedding_size=192)
         campplus_model.load_state_dict(torch.load(campplus_ckpt_path, map_location="cpu"))
         self.campplus_model = campplus_model.to(self.device)
