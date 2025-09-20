@@ -633,6 +633,16 @@ class IndexTTS2:
             print(f"[ERROR] 创建简化TextNormalizer失败: {e}")
             raise RuntimeError(f"TextNormalizer初始化失败: {e}")
 
+        # 创建TextTokenizer
+        try:
+            print(f"[IndexTTS2] 开始创建TextTokenizer，BPE路径: {self.bpe_path}")
+            self.tokenizer = TextTokenizer(self.bpe_path, self.normalizer)
+            print("[IndexTTS2] ✓ TextTokenizer创建完成")
+            print(">> bpe model loaded from:", self.bpe_path)
+        except Exception as e:
+            print(f"[ERROR] 创建TextTokenizer失败: {e}")
+            raise RuntimeError(f"TextTokenizer初始化失败: {e}")
+
     def _create_fallback_normalizer(self):
         """创建一个增强的TextNormalizer作为回退方案，包含数字转换功能"""
         class EnhancedFallbackTextNormalizer:
@@ -779,11 +789,6 @@ class IndexTTS2:
                     return self.en_normalizer.normalize(text)
 
         return EnhancedFallbackTextNormalizer()
-
-        print(f"[IndexTTS2] 开始创建TextTokenizer，BPE路径: {self.bpe_path}")
-        self.tokenizer = TextTokenizer(self.bpe_path, self.normalizer)
-        print("[IndexTTS2] ✓ TextTokenizer创建完成")
-        print(">> bpe model loaded from:", self.bpe_path)
 
         print(f"[IndexTTS2] 开始加载情感矩阵: {self.cfg.emo_matrix}")
         emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
