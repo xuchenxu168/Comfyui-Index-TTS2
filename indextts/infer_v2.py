@@ -528,7 +528,43 @@ class IndexTTS2:
                     print(f"[ERROR] 本地路径: {local_bigvgan_path}")
                 raise
 
-        self.bpe_path = os.path.join(self.model_dir, self.cfg.dataset["bpe_model"])
+        # 检查BPE模型文件路径
+        bpe_filename = self.cfg.dataset["bpe_model"]
+
+        # 构建可能的BPE文件路径，使用多种方法确保兼容性
+        possible_bpe_paths = []
+
+        # 方法1: 直接使用os.path.join（保持原有兼容性）
+        possible_bpe_paths.append(os.path.join(self.model_dir, bpe_filename))
+        possible_bpe_paths.append(os.path.join(self.model_dir, "bpe_model.model"))
+
+        # 方法2: 如果model_dir指向checkpoints，尝试上一级目录
+        parent_dir = os.path.dirname(self.model_dir)
+        possible_bpe_paths.append(os.path.join(parent_dir, bpe_filename))
+
+        # 方法3: 相对于当前脚本的路径
+        script_dir = os.path.dirname(__file__)
+        possible_bpe_paths.append(os.path.join(script_dir, "..", "bpe_model.model"))
+
+        # 方法4: 在当前工作目录查找
+        possible_bpe_paths.append(bpe_filename)
+        possible_bpe_paths.append("bpe_model.model")
+
+        self.bpe_path = None
+        for path in possible_bpe_paths:
+            if os.path.exists(path):
+                self.bpe_path = path
+                print(f"[IndexTTS2] 发现BPE模型文件: {self.bpe_path}")
+                break
+
+        if not self.bpe_path:
+            print(f"[ERROR] 未找到BPE模型文件，尝试的路径:")
+            for path in possible_bpe_paths:
+                print(f"  {path} - {'存在' if os.path.exists(path) else '不存在'}")
+            print(f"[ERROR] 当前model_dir: {self.model_dir}")
+            print(f"[ERROR] 配置中的BPE文件名: {bpe_filename}")
+            raise FileNotFoundError(f"BPE模型文件未找到: {bpe_filename}")
+
         self.normalizer = TextNormalizer()
         self.normalizer.load()
         print(">> TextNormalizer loaded")
