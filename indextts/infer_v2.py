@@ -72,6 +72,15 @@ class IndexTTS2:
         # 进度引用显示（可选）- 提前初始化避免AttributeError
         self.gr_progress = None
 
+        # 缓存参考音频 - 提前初始化避免AttributeError
+        self.cache_spk_cond = None
+        self.cache_s2mel_style = None
+        self.cache_s2mel_prompt = None
+        self.cache_spk_audio_prompt = None
+        self.cache_emo_cond = None
+        self.cache_emo_audio_prompt = None
+        self.cache_mel = None
+
         # 检查qwen_emo模型路径是否存在
         qwen_emo_path = os.path.join(self.model_dir, self.cfg.qwen_emo_path)
         if os.path.exists(qwen_emo_path):
@@ -757,15 +766,6 @@ class IndexTTS2:
             "center": False
         }
         self.mel_fn = lambda x: mel_spectrogram(x, **mel_fn_args)
-
-        # 缓存参考音频：
-        self.cache_spk_cond = None
-        self.cache_s2mel_style = None
-        self.cache_s2mel_prompt = None
-        self.cache_spk_audio_prompt = None
-        self.cache_emo_cond = None
-        self.cache_emo_audio_prompt = None
-        self.cache_mel = None
 
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
 
