@@ -125,6 +125,8 @@ class IndexTTS2:
         print("[IndexTTS2] ✓ 所有关键属性已提前初始化")
         # ========== 属性初始化完成 ==========
 
+        print("[IndexTTS2] 🚀 开始IndexTTS2完整初始化流程...")
+
         # 检查qwen_emo模型路径是否存在
         qwen_emo_path = os.path.join(self.model_dir, self.cfg.qwen_emo_path)
         if os.path.exists(qwen_emo_path):
@@ -643,6 +645,24 @@ class IndexTTS2:
             print(f"[ERROR] 创建TextTokenizer失败: {e}")
             raise RuntimeError(f"TextTokenizer初始化失败: {e}")
 
+        print("[IndexTTS2] 📝 文本处理组件初始化完成，开始加载模型...")
+
+        # 加载情感和说话人矩阵
+        try:
+            print(f"[IndexTTS2] 开始加载情感矩阵: {self.cfg.emo_matrix}")
+            emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
+            self.emo_matrix = emo_matrix.to(self.device)
+            self.emo_num = list(self.cfg.emo_num)
+            print("[IndexTTS2] ✓ 情感矩阵加载完成")
+
+            print(f"[IndexTTS2] 开始加载说话人矩阵: {self.cfg.spk_matrix}")
+            spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
+            self.spk_matrix = spk_matrix.to(self.device)
+            print("[IndexTTS2] ✓ 说话人矩阵加载完成")
+        except Exception as e:
+            print(f"[ERROR] 矩阵加载失败: {e}")
+            raise RuntimeError(f"矩阵加载失败: {e}")
+
     def _create_fallback_normalizer(self):
         """创建一个增强的TextNormalizer作为回退方案，包含数字转换功能"""
         class EnhancedFallbackTextNormalizer:
@@ -795,17 +815,6 @@ class IndexTTS2:
                 pass
 
         return EnhancedFallbackTextNormalizer()
-
-        print(f"[IndexTTS2] 开始加载情感矩阵: {self.cfg.emo_matrix}")
-        emo_matrix = torch.load(os.path.join(self.model_dir, self.cfg.emo_matrix))
-        self.emo_matrix = emo_matrix.to(self.device)
-        self.emo_num = list(self.cfg.emo_num)
-        print("[IndexTTS2] ✓ 情感矩阵加载完成")
-
-        print(f"[IndexTTS2] 开始加载说话人矩阵: {self.cfg.spk_matrix}")
-        spk_matrix = torch.load(os.path.join(self.model_dir, self.cfg.spk_matrix))
-        self.spk_matrix = spk_matrix.to(self.device)
-        print("[IndexTTS2] ✓ 说话人矩阵加载完成")
 
         # 分割矩阵前进行验证
         print(f"[IndexTTS2] 准备分割矩阵，emo_num: {self.emo_num}")
