@@ -621,16 +621,40 @@ class IndexTTS2:
             raise FileNotFoundError(f"BPE模型文件未找到: {bpe_filename}")
 
         print("[IndexTTS2] 开始创建TextNormalizer...")
-        print("[IndexTTS2] 由于TextNormalizer经常卡住，直接使用简化版本...")
 
-        # 直接使用简化的TextNormalizer，避免卡住问题
-        try:
-            self.normalizer = self._create_fallback_normalizer()
-            print("[IndexTTS2] ✓ 使用简化TextNormalizer（跳过可能卡住的正常加载）")
-            print(">> TextNormalizer loaded")
-        except Exception as e:
-            print(f"[ERROR] 创建简化TextNormalizer失败: {e}")
-            raise RuntimeError(f"TextNormalizer初始化失败: {e}")
+        # 基于操作系统选择TextNormalizer版本
+        import platform
+        current_os = platform.system()
+        print(f"[IndexTTS2] 检测到操作系统: {current_os}")
+
+        if current_os == "Windows":
+            print("[IndexTTS2] Windows系统，尝试使用完整版TextNormalizer...")
+            try:
+                # 尝试使用完整版TextNormalizer
+                from indextts.utils.front import TextNormalizer
+                self.normalizer = TextNormalizer()
+                self.normalizer.load()
+                print("[IndexTTS2] ✓ 使用完整版TextNormalizer")
+                print(">> TextNormalizer loaded")
+            except Exception as e:
+                print(f"[IndexTTS2] 完整版TextNormalizer加载失败: {e}")
+                print("[IndexTTS2] 回退到简化版TextNormalizer...")
+                try:
+                    self.normalizer = self._create_fallback_normalizer()
+                    print("[IndexTTS2] ✓ 使用简化版TextNormalizer（回退方案）")
+                    print(">> TextNormalizer loaded")
+                except Exception as fallback_e:
+                    print(f"[ERROR] 简化版TextNormalizer也失败: {fallback_e}")
+                    raise RuntimeError(f"TextNormalizer初始化失败: {fallback_e}")
+        else:
+            print(f"[IndexTTS2] 非Windows系统（{current_os}），使用简化版TextNormalizer...")
+            try:
+                self.normalizer = self._create_fallback_normalizer()
+                print("[IndexTTS2] ✓ 使用简化版TextNormalizer（适配非Windows系统）")
+                print(">> TextNormalizer loaded")
+            except Exception as e:
+                print(f"[ERROR] 创建简化TextNormalizer失败: {e}")
+                raise RuntimeError(f"TextNormalizer初始化失败: {e}")
 
         # 创建TextTokenizer
         try:
