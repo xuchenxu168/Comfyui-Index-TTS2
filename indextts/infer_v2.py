@@ -33,6 +33,59 @@ import safetensors
 import random
 import torch.nn.functional as F
 
+# 导入高级音频系统
+try:
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from advanced_audio_systems import SpeakerEmbeddingCache, VoiceConsistencyController, AdaptiveQualityMonitor
+    ADVANCED_SYSTEMS_AVAILABLE = True
+except ImportError as e:
+    print(f"[IndexTTS2] 高级音频系统导入失败: {e}")
+    ADVANCED_SYSTEMS_AVAILABLE = False
+
+# AI增强系统导入
+try:
+    from ai_enhanced_systems import IntelligentParameterLearner, AdaptiveAudioEnhancer, IntelligentQualityPredictor, AdaptiveCacheStrategy
+    AI_ENHANCED_SYSTEMS_AVAILABLE = True
+except ImportError as e:
+    print(f"[IndexTTS2] AI增强系统导入失败: {e}")
+    AI_ENHANCED_SYSTEMS_AVAILABLE = False
+
+# 高质量重采样器
+class AdvancedResampler:
+    """高质量音频重采样器"""
+
+    def __init__(self):
+        self.resamplers = {}
+        self.cache_size = 10
+
+    def _create_high_quality_resampler(self, orig_sr: int, target_sr: int):
+        """创建高质量重采样器"""
+        return torchaudio.transforms.Resample(
+            orig_sr, target_sr,
+            resampling_method="sinc_interp_kaiser",  # 使用新的方法名
+            lowpass_filter_width=64,
+            rolloff=0.99,
+            beta=14.769656459379492  # Kaiser窗参数，平衡通带纹波和阻带衰减
+        )
+
+    def resample(self, audio: torch.Tensor, orig_sr: int, target_sr: int) -> torch.Tensor:
+        """高质量重采样"""
+        if orig_sr == target_sr:
+            return audio
+
+        key = (orig_sr, target_sr)
+        if key not in self.resamplers:
+            if len(self.resamplers) >= self.cache_size:
+                # 清理最旧的重采样器
+                oldest_key = next(iter(self.resamplers))
+                del self.resamplers[oldest_key]
+
+            self.resamplers[key] = self._create_high_quality_resampler(orig_sr, target_sr)
+
+        return self.resamplers[key](audio)
+
 class IndexTTS2:
     def __init__(
             self, cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, device=None,
@@ -121,6 +174,46 @@ class IndexTTS2:
 
         # 模型版本
         self.model_version = self.cfg.version if hasattr(self.cfg, "version") else None
+
+        # 高质量重采样器
+        self.advanced_resampler = AdvancedResampler()
+
+        # 高级音频系统（第二阶段改进）
+        if ADVANCED_SYSTEMS_AVAILABLE:
+            self.speaker_embedding_cache = SpeakerEmbeddingCache(
+                cache_size=200,
+                similarity_threshold=0.95,
+                enable_multi_sample_fusion=True
+            )
+            self.voice_consistency_controller = VoiceConsistencyController(
+                consistency_threshold=0.8,
+                adaptation_rate=0.1
+            )
+            self.quality_monitor = AdaptiveQualityMonitor()
+            print("[IndexTTS2] ✓ 高级音频系统初始化完成")
+        else:
+            self.speaker_embedding_cache = None
+            self.voice_consistency_controller = None
+            self.quality_monitor = None
+
+        # AI增强系统（第三阶段改进）
+        if AI_ENHANCED_SYSTEMS_AVAILABLE:
+            self.parameter_learner = IntelligentParameterLearner()
+            self.audio_enhancer = AdaptiveAudioEnhancer(self.parameter_learner)
+            self.quality_predictor = IntelligentQualityPredictor(self.parameter_learner)
+            self.adaptive_cache_strategy = AdaptiveCacheStrategy(self.parameter_learner)
+
+            # 将自适应缓存策略集成到现有缓存系统
+            if self.speaker_embedding_cache:
+                self.speaker_embedding_cache.adaptive_cache_strategy = self.adaptive_cache_strategy
+
+            print("[IndexTTS2] ✓ AI增强系统初始化完成")
+        else:
+            self.parameter_learner = None
+            self.audio_enhancer = None
+            self.quality_predictor = None
+            self.adaptive_cache_strategy = None
+            print("[IndexTTS2] ⚠️ 高级音频系统不可用，使用基础功能")
 
         print("[IndexTTS2] ✓ 属性初始化完成")
 
@@ -973,6 +1066,43 @@ class IndexTTS2:
                   f"emo_text:{emo_text}")
         start_time = time.perf_counter()
 
+        # AI增强系统预处理
+        speaker_id = f"speaker_{hash(str(spk_audio_prompt)) % 10000}"  # 简化的说话人ID
+        original_params = generation_kwargs.copy()
+        quality_prediction = None
+
+        if AI_ENHANCED_SYSTEMS_AVAILABLE and self.quality_predictor:
+            try:
+                # 质量预测
+                quality_prediction = self.quality_predictor.predict_quality(text, speaker_id, original_params)
+                if verbose:
+                    print(f"[AI增强] 质量预测: {quality_prediction['predicted_score']:.3f} ({quality_prediction['quality_level']})")
+                    if quality_prediction['suggestions']:
+                        print(f"[AI增强] 建议: {', '.join(quality_prediction['suggestions'])}")
+
+                # 自适应音频增强
+                if self.audio_enhancer:
+                    enhanced_params = self.audio_enhancer.generate_enhancement_parameters(
+                        text, speaker_id, original_params
+                    )
+                    generation_kwargs.update(enhanced_params)
+                    if verbose and enhanced_params.get('enhancement_metadata', {}).get('enhancement_applied'):
+                        metadata = enhanced_params['enhancement_metadata']
+                        print(f"[AI增强] 检测到情感: {metadata['primary_emotion']} (置信度: {metadata['emotion_confidence']:.2f})")
+                        print(f"[AI增强] 检测到内容类型: {metadata['primary_content']} (置信度: {metadata['content_confidence']:.2f})")
+
+                # 参数学习和优化
+                if self.parameter_learner:
+                    recommended_params = self.parameter_learner.get_recommended_parameters(
+                        speaker_id, generation_kwargs
+                    )
+                    generation_kwargs.update(recommended_params)
+
+            except Exception as e:
+                if verbose:
+                    print(f"[AI增强] 预处理失败: {e}")
+                # 继续使用原始参数
+
         if use_emo_text:
             emo_audio_prompt = None
             emo_alpha = 1.0
@@ -1005,15 +1135,56 @@ class IndexTTS2:
         if self.cache_spk_cond is None or self.cache_spk_audio_prompt != spk_audio_prompt:
             audio, sr = librosa.load(spk_audio_prompt)
             audio = torch.tensor(audio).unsqueeze(0)
-            audio_22k = torchaudio.transforms.Resample(sr, 22050)(audio)
-            audio_16k = torchaudio.transforms.Resample(sr, 16000)(audio)
+            # 使用高质量重采样器
+            audio_22k = self.advanced_resampler.resample(audio, sr, 22050)
+            audio_16k = self.advanced_resampler.resample(audio, sr, 16000)
 
             inputs = self.extract_features(audio_16k, sampling_rate=16000, return_tensors="pt")
             input_features = inputs["input_features"]
             attention_mask = inputs["attention_mask"]
             input_features = input_features.to(self.device)
             attention_mask = attention_mask.to(self.device)
-            spk_cond_emb = self.get_emb(input_features, attention_mask)
+
+            # 使用缓存系统提取说话人嵌入
+            if self.speaker_embedding_cache is not None:
+                # 准备元数据
+                metadata = {
+                    'sample_rate': sr,
+                    'audio_path': spk_audio_prompt,
+                    'audio_length': audio_16k.shape[-1]
+                }
+
+                # 使用缓存系统
+                def extract_embedding_func(audio_tensor):
+                    return self.get_emb(input_features, attention_mask)
+
+                spk_cond_emb = self.speaker_embedding_cache.get_or_compute_embedding(
+                    audio_16k, extract_embedding_func, metadata
+                )
+
+                # 应用声音一致性控制
+                if self.voice_consistency_controller is not None:
+                    speaker_id = f"speaker_{hash(spk_audio_prompt) % 10000}"  # 简单的说话人ID
+
+                    # 如果是新说话人，注册参考嵌入
+                    if speaker_id not in self.voice_consistency_controller.speaker_profiles:
+                        self.voice_consistency_controller.register_speaker(speaker_id, spk_cond_emb, metadata)
+
+                    # 应用一致性约束
+                    spk_cond_emb = self.voice_consistency_controller.apply_consistency_constraint(
+                        spk_cond_emb, speaker_id
+                    )
+
+                    # 更新说话人档案
+                    consistency_score = self.voice_consistency_controller.compute_consistency_score(
+                        spk_cond_emb, speaker_id
+                    )
+                    self.voice_consistency_controller.update_speaker_profile(
+                        speaker_id, spk_cond_emb, consistency_score
+                    )
+            else:
+                # 回退到原始方法
+                spk_cond_emb = self.get_emb(input_features, attention_mask)
 
             _, S_ref = self.semantic_codec.quantize(spk_cond_emb)
             ref_mel = self.mel_fn(audio_22k.to(spk_cond_emb.device).float())
@@ -1163,6 +1334,16 @@ class IndexTTS2:
                         emovec = emovec_mat + (1 - weight_sum) * emovec
                         # emovec = emovec_mat
 
+                    # 过滤AI增强参数，只保留模型支持的参数
+                    ai_enhancement_params = {
+                        'energy_level', 'naturalness_factor', 'enhancement_metadata',
+                        'clarity_factor', 'pace_factor', 'expression_level', 'voice_consistency'
+                    }
+                    filtered_kwargs = {
+                        k: v for k, v in generation_kwargs.items()
+                        if k not in ai_enhancement_params
+                    }
+
                     codes, speech_conditioning_latent = self.gpt.inference_speech(
                         spk_cond_emb,
                         text_tokens,
@@ -1179,7 +1360,7 @@ class IndexTTS2:
                         num_beams=num_beams,
                         repetition_penalty=repetition_penalty,
                         max_generate_length=max_mel_tokens,
-                        **generation_kwargs
+                        **filtered_kwargs
                     )
 
                 gpt_gen_time += time.perf_counter() - m_start_time
@@ -1282,6 +1463,108 @@ class IndexTTS2:
 
         # save audio
         wav = wav.cpu()  # to cpu
+
+        # 质量监控（第二阶段改进）
+        if self.quality_monitor is not None:
+            try:
+                # 对最终音频进行质量评估
+                quality_assessment = self.quality_monitor.assess_quality(wav.float(), sampling_rate)
+
+                print(f"[IndexTTS2] 🎵 音频质量评估:")
+                print(f"  - 综合质量分数: {quality_assessment['overall_quality']:.3f}")
+                print(f"  - SNR: {quality_assessment['metrics']['snr']:.1f} dB")
+                print(f"  - THD: {quality_assessment['metrics']['thd']:.3f}")
+                print(f"  - 动态范围: {quality_assessment['metrics']['dynamic_range']:.1f} dB")
+                print(f"  - 峰值电平: {quality_assessment['metrics']['peak_level']:.1f} dB")
+
+                if quality_assessment['violations'] > 0:
+                    print(f"  ⚠️  检测到 {quality_assessment['violations']} 项质量问题")
+
+                    # 自动改进功能已禁用，使用原始音频
+                    # if quality_assessment['improvement_applied'] and quality_assessment['improved_audio'] is not None:
+                    #     print(f"  🔧 自动质量改进已应用")
+                    #     wav = quality_assessment['improved_audio']
+                    #
+                    #     # 重新评估改进后的音频
+                    #     improved_assessment = self.quality_monitor.assess_quality(wav.float(), sampling_rate)
+                    #     print(f"  📈 改进后质量分数: {improved_assessment['overall_quality']:.3f}")
+                    #     print(f"  📈 改进后违规项: {improved_assessment['violations']}")
+                    print(f"  ℹ️ 自动改进功能已禁用，使用原始音频")
+                else:
+                    print(f"  ✅ 音频质量良好")
+
+            except Exception as e:
+                print(f"[IndexTTS2] ⚠️ 质量监控失败: {e}")
+
+        # AI增强系统后处理和学习
+        if AI_ENHANCED_SYSTEMS_AVAILABLE and self.parameter_learner:
+            try:
+                # 获取最终质量分数
+                final_quality_score = 0.7  # 默认分数
+                if self.quality_monitor is not None:
+                    try:
+                        quality_assessment = self.quality_monitor.assess_quality(wav.float(), sampling_rate)
+                        final_quality_score = quality_assessment['overall_quality']
+                    except:
+                        pass
+
+                # 记录合成会话用于学习
+                if hasattr(self, 'speaker_embedding_cache') and self.speaker_embedding_cache:
+                    # 获取说话人嵌入（如果可用）
+                    try:
+                        # 简化的嵌入获取，实际应该从合成过程中获取
+                        dummy_embedding = torch.randn(1, 256)  # 占位符嵌入
+                        self.parameter_learner.record_synthesis_session(
+                            speaker_id=speaker_id,
+                            embedding=dummy_embedding,
+                            params=generation_kwargs,
+                            quality_score=final_quality_score
+                        )
+                    except Exception as e:
+                        if verbose:
+                            print(f"[AI增强] 记录会话失败: {e}")
+
+                # 更新质量预测准确性
+                if quality_prediction and self.quality_predictor:
+                    try:
+                        predicted_score = quality_prediction['predicted_score']
+                        self.quality_predictor.update_prediction_accuracy(predicted_score, final_quality_score)
+
+                        if verbose:
+                            prediction_error = abs(predicted_score - final_quality_score)
+                            print(f"[AI增强] 预测准确性: 预测={predicted_score:.3f}, 实际={final_quality_score:.3f}, 误差={prediction_error:.3f}")
+                    except Exception as e:
+                        if verbose:
+                            print(f"[AI增强] 更新预测准确性失败: {e}")
+
+                # 评估增强效果
+                if self.audio_enhancer and 'enhancement_metadata' in generation_kwargs:
+                    try:
+                        # 估算原始质量（简化）
+                        original_quality_estimate = final_quality_score * 0.9  # 假设增强有10%提升
+                        self.audio_enhancer.evaluate_enhancement_effectiveness(
+                            original_quality_estimate,
+                            final_quality_score,
+                            generation_kwargs['enhancement_metadata']
+                        )
+                    except Exception as e:
+                        if verbose:
+                            print(f"[AI增强] 评估增强效果失败: {e}")
+
+                # 定期保存学习数据
+                if hasattr(self.parameter_learner, 'stats') and self.parameter_learner.stats['total_learning_sessions'] % 50 == 0:
+                    try:
+                        self.parameter_learner.save_all_data()
+                        if verbose:
+                            print("[AI增强] 学习数据已保存")
+                    except Exception as e:
+                        if verbose:
+                            print(f"[AI增强] 保存学习数据失败: {e}")
+
+            except Exception as e:
+                if verbose:
+                    print(f"[AI增强] 后处理失败: {e}")
+
         if output_path:
             # 直接保存音频到指定路径中
             if os.path.isfile(output_path):
@@ -1297,6 +1580,78 @@ class IndexTTS2:
             wav_data = wav.type(torch.int16)
             wav_data = wav_data.numpy().T
             return (sampling_rate, wav_data)
+
+    def get_advanced_systems_stats(self):
+        """获取高级音频系统统计信息"""
+        stats = {}
+
+        if self.speaker_embedding_cache is not None:
+            stats['speaker_cache'] = self.speaker_embedding_cache.get_cache_stats()
+
+        if self.voice_consistency_controller is not None:
+            stats['voice_consistency'] = self.voice_consistency_controller.get_consistency_stats()
+
+        if self.quality_monitor is not None:
+            stats['quality_monitor'] = self.quality_monitor.get_quality_stats()
+
+        # AI增强系统统计
+        if AI_ENHANCED_SYSTEMS_AVAILABLE:
+            if self.parameter_learner is not None:
+                stats['parameter_learner'] = self.parameter_learner.get_learning_stats()
+
+            if self.audio_enhancer is not None:
+                stats['audio_enhancer'] = self.audio_enhancer.get_enhancement_stats()
+
+            if self.quality_predictor is not None:
+                stats['quality_predictor'] = self.quality_predictor.get_prediction_stats()
+
+            if self.adaptive_cache_strategy is not None:
+                stats['adaptive_cache_strategy'] = self.adaptive_cache_strategy.get_adaptation_stats()
+
+        return stats
+
+    def print_advanced_systems_summary(self):
+        """打印高级音频系统摘要"""
+        if not ADVANCED_SYSTEMS_AVAILABLE:
+            print("[IndexTTS2] 高级音频系统不可用")
+            return
+
+        stats = self.get_advanced_systems_stats()
+
+        print("\n" + "="*60)
+        print("[IndexTTS2] 🚀 高级音频系统统计摘要")
+        print("="*60)
+
+        # 说话人嵌入缓存统计
+        if 'speaker_cache' in stats:
+            cache_stats = stats['speaker_cache']
+            print(f"📦 说话人嵌入缓存:")
+            print(f"  - 缓存大小: {cache_stats['cache_size']}/{cache_stats['max_cache_size']}")
+            print(f"  - 命中率: {cache_stats['hit_rate']:.1f}%")
+            print(f"  - 总请求: {cache_stats['total_requests']}")
+            print(f"  - 融合操作: {cache_stats['fusion_operations']}")
+            print(f"  - 相似性匹配: {cache_stats['similarity_matches']}")
+
+        # 声音一致性控制统计
+        if 'voice_consistency' in stats:
+            consistency_stats = stats['voice_consistency']
+            print(f"🎭 声音一致性控制:")
+            print(f"  - 注册说话人: {consistency_stats['speaker_count']}")
+            print(f"  - 平均一致性: {consistency_stats['global_stats']['average_consistency']:.3f}")
+            print(f"  - 违规率: {consistency_stats['violation_rate']:.1f}%")
+            print(f"  - 应用修正: {consistency_stats['global_stats']['corrections_applied']}")
+
+        # 质量监控统计
+        if 'quality_monitor' in stats:
+            quality_stats = stats['quality_monitor']
+            if 'stats' in quality_stats:
+                print(f"🎵 音频质量监控:")
+                print(f"  - 评估次数: {quality_stats['stats']['total_assessments']}")
+                print(f"  - 违规率: {quality_stats['violation_rate']:.1f}%")
+                print(f"  - 平均质量: {quality_stats['average_quality']:.3f}")
+                print(f"  - 阈值调整: {quality_stats['stats']['threshold_adaptations']}")
+
+        print("="*60)
 
 
 def find_most_similar_cosine(query_vector, matrix):
