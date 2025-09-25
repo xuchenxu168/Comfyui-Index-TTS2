@@ -8,6 +8,124 @@ import tempfile
 import torchaudio
 from typing import Optional, Tuple, Any, List, Dict
 import folder_paths
+import torch.nn.functional as F
+import sys
+
+# 添加项目路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+# 导入高级音频系统
+try:
+    from advanced_audio_systems import SpeakerEmbeddingCache, VoiceConsistencyController, AdaptiveQualityMonitor
+    ADVANCED_SYSTEMS_AVAILABLE = True
+except ImportError as e:
+    print(f"[MultiTalkNode] 高级音频系统导入失败: {e}")
+    ADVANCED_SYSTEMS_AVAILABLE = False
+
+# 智能音频预处理器
+class IntelligentAudioPreprocessor:
+    """智能音频预处理器"""
+
+    def __init__(self, sample_rate: int = 22050):
+        self.sample_rate = sample_rate
+        self.noise_gate_threshold = -40  # dB
+        self.compressor_threshold = -12  # dB
+        self.compressor_ratio = 4.0
+
+    def apply_noise_gate(self, audio: torch.Tensor, threshold_db: float = -40) -> torch.Tensor:
+        """噪声门限处理"""
+        # 转换为dB
+        audio_db = 20 * torch.log10(torch.abs(audio) + 1e-8)
+
+        # 创建门限掩码
+        gate_mask = audio_db > threshold_db
+
+        # 应用软门限（避免突变）
+        soft_mask = torch.sigmoid((audio_db - threshold_db) * 0.5)
+
+        return audio * soft_mask
+
+    def apply_dynamic_compression(self, audio: torch.Tensor,
+                                threshold_db: float = -12,
+                                ratio: float = 4.0) -> torch.Tensor:
+        """动态范围压缩"""
+        # 计算音频包络
+        envelope = torch.abs(audio)
+        envelope_db = 20 * torch.log10(envelope + 1e-8)
+
+        # 计算增益减少
+        gain_reduction = torch.zeros_like(envelope_db)
+        over_threshold = envelope_db > threshold_db
+        gain_reduction[over_threshold] = (envelope_db[over_threshold] - threshold_db) * (1 - 1/ratio)
+
+        # 应用增益减少
+        gain_linear = torch.pow(10, -gain_reduction / 20)
+
+        return audio * gain_linear
+
+    def apply_spectral_enhancement(self, audio: torch.Tensor,
+                                 enhancement_strength: float = 0.3) -> torch.Tensor:
+        """频谱增强"""
+        if audio.shape[-1] < 1024:
+            return audio
+
+        # 高频增强滤波器
+        kernel = torch.tensor([[-0.05, -0.1, 0.7, -0.1, -0.05]], dtype=audio.dtype, device=audio.device)
+        kernel = kernel.unsqueeze(0)
+
+        enhanced_channels = []
+        for ch in range(audio.shape[0]):
+            ch_data = audio[ch:ch+1].unsqueeze(0)
+            enhanced = F.conv1d(ch_data, kernel, padding=2)
+
+            # 混合原始和增强信号
+            mixed = ch_data * (1 - enhancement_strength) + enhanced * enhancement_strength
+            enhanced_channels.append(mixed.squeeze(0))
+
+        return torch.cat(enhanced_channels, dim=0)
+
+    def normalize_loudness(self, audio: torch.Tensor, target_lufs: float = -23.0) -> torch.Tensor:
+        """响度标准化（简化版LUFS）"""
+        # 计算RMS
+        rms = torch.sqrt(torch.mean(audio ** 2))
+
+        if rms > 0:
+            # 简化的LUFS到RMS转换
+            target_rms = 10 ** ((target_lufs + 3.01) / 20)  # 近似转换
+            gain = target_rms / rms
+
+            # 限制增益范围
+            gain = torch.clamp(gain, 0.1, 3.0)
+            audio = audio * gain
+
+        return audio
+
+    def process(self, audio: torch.Tensor,
+                noise_gate: bool = True,
+                compression: bool = True,
+                spectral_enhancement: bool = True,
+                loudness_normalization: bool = True) -> torch.Tensor:
+        """完整的音频预处理流程"""
+        processed_audio = audio.clone()
+
+        if noise_gate:
+            processed_audio = self.apply_noise_gate(processed_audio)
+
+        if compression:
+            processed_audio = self.apply_dynamic_compression(processed_audio)
+
+        if spectral_enhancement:
+            processed_audio = self.apply_spectral_enhancement(processed_audio)
+
+        if loudness_normalization:
+            processed_audio = self.normalize_loudness(processed_audio)
+
+        # 最终限幅
+        processed_audio = torch.clamp(processed_audio, -0.95, 0.95)
+
+        return processed_audio
 
 class IndexTTS2MultiTalkNode:
     """
@@ -27,6 +145,27 @@ class IndexTTS2MultiTalkNode:
     def __init__(self):
         self.model = None
         self.model_config = None
+        # 智能音频预处理器
+        self.audio_preprocessor = IntelligentAudioPreprocessor()
+
+        # 高级音频系统（第二阶段改进）
+        if ADVANCED_SYSTEMS_AVAILABLE:
+            self.speaker_embedding_cache = SpeakerEmbeddingCache(
+                cache_size=100,  # 多人对话节点使用较小的缓存
+                similarity_threshold=0.92,
+                enable_multi_sample_fusion=True
+            )
+            self.voice_consistency_controller = VoiceConsistencyController(
+                consistency_threshold=0.75,  # 多人对话允许更多变化
+                adaptation_rate=0.15
+            )
+            self.quality_monitor = AdaptiveQualityMonitor()
+            print("[MultiTalkNode] ✓ 高级音频系统初始化完成")
+        else:
+            self.speaker_embedding_cache = None
+            self.voice_consistency_controller = None
+            self.quality_monitor = None
+            print("[MultiTalkNode] ⚠️ 高级音频系统不可用，使用基础功能")
         
     @classmethod
     def INPUT_TYPES(cls):
@@ -77,7 +216,39 @@ class IndexTTS2MultiTalkNode:
                     "max": 3.0,
                     "step": 0.1,
                     "display": "slider",
-                    "tooltip": "说话人之间的静音时长（秒）/ Silence duration between speakers (seconds)"
+                    "tooltip": "全局默认静音时长（秒）/ Global default silence duration between speakers (seconds)"
+                }),
+                "speaker1_pause": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "display": "slider",
+                    "tooltip": "说话人1说完后的停顿时间（秒）/ Pause duration after Speaker 1 (seconds)"
+                }),
+                "speaker2_pause": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "display": "slider",
+                    "tooltip": "说话人2说完后的停顿时间（秒）/ Pause duration after Speaker 2 (seconds)"
+                }),
+                "speaker3_pause": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "display": "slider",
+                    "tooltip": "说话人3说完后的停顿时间（秒）/ Pause duration after Speaker 3 (seconds)"
+                }),
+                "speaker4_pause": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "display": "slider",
+                    "tooltip": "说话人4说完后的停顿时间（秒）/ Pause duration after Speaker 4 (seconds)"
                 }),
                 "voice_consistency": ("FLOAT", {
                     "default": 1.0,
@@ -148,6 +319,10 @@ class IndexTTS2MultiTalkNode:
         language: str = "auto",
         speed: float = 1.0,
         silence_duration: float = 0.5,
+        speaker1_pause: float = 0.5,
+        speaker2_pause: float = 0.5,
+        speaker3_pause: float = 0.5,
+        speaker4_pause: float = 0.5,
         voice_consistency: float = 1.0,
         reference_boost: bool = True,
         speaker1_emotion_config: Optional[dict] = None,
@@ -255,8 +430,13 @@ class IndexTTS2MultiTalkNode:
                 except:
                     pass
             
-            # 合并音频片段
-            final_audio = self._merge_audio_segments(audio_segments, silence_duration, verbose)
+            # 准备个性化停顿时间配置
+            speaker_pauses = [speaker1_pause, speaker2_pause, speaker3_pause, speaker4_pause]
+
+            # 合并音频片段（使用个性化停顿时间）
+            final_audio = self._merge_audio_segments_with_custom_pauses(
+                audio_segments, conversation_lines, speaker_pauses, silence_duration, verbose
+            )
             
             # 准备输出路径
             output_dir = folder_paths.get_output_directory()
@@ -264,7 +444,45 @@ class IndexTTS2MultiTalkNode:
             
             # 保存最终音频
             torchaudio.save(output_path, final_audio["waveform"], final_audio["sample_rate"])
-            
+
+            # 质量监控（第二阶段改进）
+            if self.quality_monitor is not None:
+                try:
+                    # 对最终音频进行质量评估
+                    quality_assessment = self.quality_monitor.assess_quality(
+                        final_audio["waveform"].float(), final_audio["sample_rate"]
+                    )
+
+                    if verbose:
+                        print(f"[MultiTalk] 🎵 多人对话音频质量评估:")
+                        print(f"  - 综合质量分数: {quality_assessment['overall_quality']:.3f}")
+                        print(f"  - SNR: {quality_assessment['metrics']['snr']:.1f} dB")
+                        print(f"  - THD: {quality_assessment['metrics']['thd']:.3f}")
+                        print(f"  - 动态范围: {quality_assessment['metrics']['dynamic_range']:.1f} dB")
+                        print(f"  - 峰值电平: {quality_assessment['metrics']['peak_level']:.1f} dB")
+
+                        if quality_assessment['violations'] > 0:
+                            print(f"  ⚠️  检测到 {quality_assessment['violations']} 项质量问题")
+
+                            # 自动改进功能已禁用，使用原始音频
+                            # if quality_assessment['improvement_applied'] and quality_assessment['improved_audio'] is not None:
+                            #     print(f"  🔧 自动质量改进已应用")
+                            #     final_audio["waveform"] = quality_assessment['improved_audio']
+                            #
+                            #     # 重新评估改进后的音频
+                            #     improved_assessment = self.quality_monitor.assess_quality(
+                            #         final_audio["waveform"].float(), final_audio["sample_rate"]
+                            #     )
+                            #     print(f"  📈 改进后质量分数: {improved_assessment['overall_quality']:.3f}")
+                            #     print(f"  📈 改进后违规项: {improved_assessment['violations']}")
+                            print(f"  ℹ️ 自动改进功能已禁用，使用原始音频")
+                        else:
+                            print(f"  ✅ 多人对话音频质量良好")
+
+                except Exception as e:
+                    if verbose:
+                        print(f"[MultiTalk] ⚠️ 质量监控失败: {e}")
+
             # 确保音频格式兼容ComfyUI
             waveform = final_audio["waveform"]
             sample_rate = final_audio["sample_rate"]
@@ -291,10 +509,10 @@ class IndexTTS2MultiTalkNode:
                 print(f"[MultiTalk] 对话合成完成: {len(conversation_lines)} 个片段")
                 print(f"[MultiTalk] 最终音频格式: {waveform.shape}, 采样率: {sample_rate}")
 
-            # 生成信息字符串
-            info = self._generate_info_with_emotion(
+            # 生成信息字符串（包含个性化停顿时间）
+            info = self._generate_info_with_emotion_and_pauses(
                 conversation_lines, num_speakers_int, output_path, language, speed,
-                silence_duration, emotion_configs
+                silence_duration, speaker_pauses, emotion_configs
             )
 
             # 生成情感分析字符串
@@ -421,8 +639,34 @@ class IndexTTS2MultiTalkNode:
             traceback.print_exc()
             raise RuntimeError(error_msg)
 
+    def _extract_pause_from_text(self, text: str) -> tuple:
+        """从文本中提取停顿时间标记
+
+        支持格式：-0.8s-、-1.2s-、-0.5s- 等
+        返回：(清理后的文本, 停顿时间或None)
+        """
+        import re
+
+        # 匹配停顿时间标记的正则表达式
+        # 支持格式：-0.8s-、-1.2s-、-0.5s-、-2s-、-0.1s- 等
+        pause_pattern = r'-(\d+(?:\.\d+)?)s-'
+
+        # 查找所有停顿标记
+        matches = re.findall(pause_pattern, text)
+
+        if matches:
+            # 取最后一个停顿标记作为该句话的停顿时间
+            pause_time = float(matches[-1])
+
+            # 从文本中移除所有停顿标记
+            clean_text = re.sub(pause_pattern, '', text).strip()
+
+            return clean_text, pause_time
+
+        return text, None
+
     def _parse_conversation(self, conversation_text: str, num_speakers: int, verbose: bool) -> List[Dict]:
-        """解析对话文本 - 支持自定义说话人名称"""
+        """解析对话文本 - 支持自定义说话人名称和内嵌停顿时间标记"""
         lines = conversation_text.strip().split('\n')
         conversation_lines = []
 
@@ -454,10 +698,14 @@ class IndexTTS2MultiTalkNode:
                 if line.startswith(f"{speaker_name}:"):
                     text = line[len(f"{speaker_name}:"):].strip()
                     if text:
+                        # 提取停顿时间标记
+                        clean_text, pause_time = self._extract_pause_from_text(text)
+
                         conversation_lines.append({
                             "speaker_idx": i,  # 0-based index
                             "speaker_name": speaker_name,
-                            "text": text
+                            "text": clean_text,
+                            "custom_pause": pause_time  # 自定义停顿时间
                         })
                         speaker_found = True
                         break
@@ -470,10 +718,14 @@ class IndexTTS2MultiTalkNode:
                         if line.startswith(pattern):
                             text = line[len(pattern):].strip()
                             if text:
+                                # 提取停顿时间标记
+                                clean_text, pause_time = self._extract_pause_from_text(text)
+
                                 conversation_lines.append({
                                     "speaker_idx": i - 1,  # 0-based index
                                     "speaker_name": f"Speaker{i}",
-                                    "text": text
+                                    "text": clean_text,
+                                    "custom_pause": pause_time  # 自定义停顿时间
                                 })
                                 speaker_found = True
                                 break
@@ -482,13 +734,17 @@ class IndexTTS2MultiTalkNode:
 
             if not speaker_found and line:
                 # 如果没有找到说话人标识，默认分配给第一个说话人
+                # 提取停顿时间标记
+                clean_text, pause_time = self._extract_pause_from_text(line)
+
                 conversation_lines.append({
                     "speaker_idx": 0,
                     "speaker_name": speaker_names[0] if speaker_names else "Speaker1",
-                    "text": line
+                    "text": clean_text,
+                    "custom_pause": pause_time  # 自定义停顿时间
                 })
                 if verbose:
-                    print(f"[MultiTalk] 未识别说话人，分配给{speaker_names[0] if speaker_names else 'Speaker1'}: {line[:30]}...")
+                    print(f"[MultiTalk] 未识别说话人，分配给{speaker_names[0] if speaker_names else 'Speaker1'}: {clean_text[:30]}...")
 
         if not conversation_lines:
             raise ValueError("No valid conversation lines found. Please use format: 'Speaker1: text' or 'YourName: text'")
@@ -759,51 +1015,89 @@ class IndexTTS2MultiTalkNode:
 
         return speaker_audio_paths
 
+    def _smooth_audio_transition(self, audio1: torch.Tensor, audio2: torch.Tensor,
+                               fade_samples: int = 1024) -> torch.Tensor:
+        """在两个音频片段间添加平滑过渡"""
+        if audio1.shape[-1] < fade_samples or audio2.shape[-1] < fade_samples:
+            return torch.cat([audio1, audio2], dim=-1)
+
+        # 创建淡入淡出窗口
+        fade_out = torch.linspace(1.0, 0.0, fade_samples, device=audio1.device, dtype=audio1.dtype)
+        fade_in = torch.linspace(0.0, 1.0, fade_samples, device=audio2.device, dtype=audio2.dtype)
+
+        # 确保维度匹配
+        if audio1.dim() == 2:  # [channels, samples]
+            fade_out = fade_out.unsqueeze(0).expand(audio1.shape[0], -1)
+            fade_in = fade_in.unsqueeze(0).expand(audio2.shape[0], -1)
+
+        # 应用交叉淡化
+        audio1_end = audio1[..., -fade_samples:] * fade_out
+        audio2_start = audio2[..., :fade_samples] * fade_in
+
+        # 混合重叠部分
+        mixed_section = audio1_end + audio2_start
+
+        # 拼接最终音频
+        result = torch.cat([
+            audio1[..., :-fade_samples],
+            mixed_section,
+            audio2[..., fade_samples:]
+        ], dim=-1)
+
+        return result
+
     def _enhance_reference_audio(self, waveform: torch.Tensor, voice_consistency: float) -> torch.Tensor:
-        """增强参考音频以提高声音一致性"""
+        """增强版参考音频处理 - 使用智能预处理器"""
         try:
-            import torch.nn.functional as F
+            # 1. 音频长度检查和处理
+            min_length = max(16000, int(0.5 * 22050))  # 至少0.5秒
+            if waveform.shape[-1] < min_length:
+                repeat_times = int(min_length / waveform.shape[-1]) + 1
+                waveform = waveform.repeat(1, repeat_times)[:, :min_length]
 
-            # 确保音频长度足够
-            if waveform.shape[-1] < 1000:
-                # 如果音频太短，进行重复
-                repeat_times = int(1000 / waveform.shape[-1]) + 1
-                waveform = waveform.repeat(1, repeat_times)[:, :1000]
+            # 2. 根据voice_consistency参数决定处理强度
+            if voice_consistency <= 1.0:
+                # 基础处理：仅音量标准化
+                processed_audio = self.audio_preprocessor.normalize_loudness(waveform)
+            elif voice_consistency <= 1.5:
+                # 中等处理：降噪 + 标准化
+                processed_audio = self.audio_preprocessor.process(
+                    waveform,
+                    noise_gate=True,
+                    compression=False,
+                    spectral_enhancement=False,
+                    loudness_normalization=True
+                )
+            else:
+                # 完整处理：全套智能预处理
+                enhancement_strength = min((voice_consistency - 1.0) * 0.3, 0.5)
 
-            # 应用轻微的音频增强
-            if voice_consistency > 1.0:
-                # 增强音频的清晰度
-                enhancement_factor = min(voice_consistency, 2.0)
+                # 自定义处理参数
+                processed_audio = waveform.clone()
 
-                # 轻微的高频增强（提高清晰度）
-                if waveform.shape[-1] > 512:
-                    # 简单的高通滤波效果
-                    kernel = torch.tensor([[-0.1, -0.1, 0.8, -0.1, -0.1]], dtype=waveform.dtype)
-                    kernel = kernel.unsqueeze(0)  # [1, 1, 5]
+                # 噪声门限
+                processed_audio = self.audio_preprocessor.apply_noise_gate(processed_audio, threshold_db=-35)
 
-                    # 对每个声道分别处理
-                    enhanced_waveform = []
-                    for ch in range(waveform.shape[0]):
-                        ch_data = waveform[ch:ch+1].unsqueeze(0)  # [1, 1, length]
-                        # 应用卷积
-                        enhanced = F.conv1d(ch_data, kernel, padding=2)
-                        # 混合原始和增强的信号
-                        mix_ratio = (enhancement_factor - 1.0) * 0.3  # 限制增强强度
-                        enhanced = ch_data * (1 - mix_ratio) + enhanced * mix_ratio
-                        enhanced_waveform.append(enhanced.squeeze(0))
+                # 动态压缩（轻微）
+                processed_audio = self.audio_preprocessor.apply_dynamic_compression(
+                    processed_audio, threshold_db=-15, ratio=2.0
+                )
 
-                    waveform = torch.cat(enhanced_waveform, dim=0)
+                # 频谱增强
+                processed_audio = self.audio_preprocessor.apply_spectral_enhancement(
+                    processed_audio, enhancement_strength=enhancement_strength
+                )
 
-                # 轻微的音量标准化
-                max_val = torch.max(torch.abs(waveform))
-                if max_val > 0:
-                    target_level = 0.7  # 目标音量级别
-                    waveform = waveform * (target_level / max_val)
+                # 响度标准化
+                processed_audio = self.audio_preprocessor.normalize_loudness(processed_audio)
 
-            return waveform
+            # 3. 最终限幅处理
+            processed_audio = torch.clamp(processed_audio, -0.95, 0.95)
+
+            return processed_audio
 
         except Exception as e:
-            print(f"[MultiTalk] 音频增强失败，使用原始音频: {e}")
+            print(f"[MultiTalk] 智能音频预处理失败，使用原始音频: {e}")
             return waveform
 
     def _merge_audio_segments(self, audio_segments: List[dict], silence_duration: float, verbose: bool) -> dict:
@@ -851,6 +1145,102 @@ class IndexTTS2MultiTalkNode:
         if verbose:
             total_duration = final_waveform.shape[1] / sample_rate
             print(f"[MultiTalk] 合并完成: {len(audio_segments)} 个片段, 总时长: {total_duration:.2f}秒")
+
+        return {
+            "waveform": final_waveform,
+            "sample_rate": sample_rate
+        }
+
+    def _merge_audio_segments_with_custom_pauses(self, audio_segments: List[dict],
+                                               conversation_lines: List[Dict],
+                                               speaker_pauses: List[float],
+                                               default_silence: float,
+                                               verbose: bool) -> dict:
+        """合并音频片段（支持每个说话人的个性化停顿时间）"""
+        if not audio_segments:
+            raise ValueError("No audio segments to merge")
+
+        # 获取第一个片段的采样率
+        sample_rate = audio_segments[0]["sample_rate"]
+
+        # 确保所有片段的采样率一致
+        for i, segment in enumerate(audio_segments):
+            if segment["sample_rate"] != sample_rate:
+                if verbose:
+                    print(f"[MultiTalk] 重采样片段 {i+1}: {segment['sample_rate']} -> {sample_rate}")
+                # 重采样到统一采样率
+                resampler = torchaudio.transforms.Resample(segment["sample_rate"], sample_rate)
+                segment["waveform"] = resampler(segment["waveform"])
+                segment["sample_rate"] = sample_rate
+
+        # 使用平滑过渡合并所有片段
+        total_pause_time = 0.0
+        fade_samples = min(512, sample_rate // 50)  # 约20ms的淡化时间
+
+        # 处理第一个片段
+        first_segment = audio_segments[0]
+        current_waveform = first_segment["waveform"]
+
+        # 确保是2D张量 [channels, samples]
+        if current_waveform.dim() == 3:
+            current_waveform = current_waveform.squeeze(0)
+        elif current_waveform.dim() == 1:
+            current_waveform = current_waveform.unsqueeze(0)
+
+        for i in range(1, len(audio_segments)):
+            # 获取当前片段
+            segment = audio_segments[i]
+            next_waveform = segment["waveform"]
+
+            # 确保是2D张量 [channels, samples]
+            if next_waveform.dim() == 3:
+                next_waveform = next_waveform.squeeze(0)
+            elif next_waveform.dim() == 1:
+                next_waveform = next_waveform.unsqueeze(0)
+
+            # 添加个性化停顿时间
+            current_line = conversation_lines[i-1]  # 前一个说话人的停顿
+            current_speaker_idx = current_line["speaker_idx"]
+
+            # 检查是否有自定义停顿时间
+            custom_pause = current_line.get("custom_pause")
+            if custom_pause is not None:
+                pause_duration = custom_pause
+                pause_source = "文本标记"
+            else:
+                # 使用说话人设置的停顿时间
+                pause_duration = speaker_pauses[current_speaker_idx] if current_speaker_idx < len(speaker_pauses) else default_silence
+                pause_source = "说话人设置"
+
+            if pause_duration > 0:
+                pause_samples = int(pause_duration * sample_rate)
+                pause_waveform = torch.zeros(current_waveform.shape[0], pause_samples, device=current_waveform.device, dtype=current_waveform.dtype)
+
+                # 使用平滑过渡连接：当前音频 -> 停顿 -> 下一个音频
+                current_waveform = self._smooth_audio_transition(current_waveform, pause_waveform, fade_samples)
+                current_waveform = self._smooth_audio_transition(current_waveform, next_waveform, fade_samples)
+
+                total_pause_time += pause_duration
+
+                if verbose:
+                    print(f"[MultiTalk] Speaker{current_speaker_idx + 1} 停顿时间: {pause_duration:.2f}秒 ({pause_source}) [平滑过渡]")
+            else:
+                # 直接使用平滑过渡连接
+                current_waveform = self._smooth_audio_transition(current_waveform, next_waveform, fade_samples)
+
+                if verbose:
+                    print(f"[MultiTalk] Speaker{current_speaker_idx + 1} -> Speaker{conversation_lines[i]['speaker_idx'] + 1} [平滑过渡]")
+
+        final_waveform = current_waveform
+
+        if verbose:
+            total_duration = final_waveform.shape[1] / sample_rate
+            audio_duration = total_duration - total_pause_time
+            print(f"[MultiTalk] 个性化停顿合并完成:")
+            print(f"  - 音频片段: {len(audio_segments)} 个")
+            print(f"  - 纯音频时长: {audio_duration:.2f}秒")
+            print(f"  - 总停顿时长: {total_pause_time:.2f}秒")
+            print(f"  - 最终总时长: {total_duration:.2f}秒")
 
         return {
             "waveform": final_waveform,
@@ -976,6 +1366,92 @@ class IndexTTS2MultiTalkNode:
         for i, line in enumerate(conversation_lines[:5]):
             preview_text = line["text"][:60] + "..." if len(line["text"]) > 60 else line["text"]
             info_lines.append(f"{line['speaker_name']}: {preview_text}")
+
+        if len(conversation_lines) > 5:
+            info_lines.append(f"... and {len(conversation_lines) - 5} more lines")
+
+        # 添加Qwen模型信息
+        info_lines.extend([
+            "",
+            "=== Qwen Emotion Model Status ===",
+        ])
+
+        qwen_info = self._get_qwen_model_info()
+        info_lines.extend(qwen_info)
+
+        return "\n".join(info_lines)
+
+    def _generate_info_with_emotion_and_pauses(self, conversation_lines: List[Dict], num_speakers: int,
+                                             output_path: str, language: str, speed: float,
+                                             silence_duration: float, speaker_pauses: List[float],
+                                             emotion_configs: List[Dict]) -> str:
+        """生成包含情感信息和个性化停顿时间的信息字符串"""
+        info_lines = [
+            "=== IndexTTS2 Multi-Talk Synthesis with Emotion Control & Custom Pauses ===",
+            f"Speakers: {num_speakers}",
+            f"Conversation Lines: {len(conversation_lines)}",
+            f"Language: {language}",
+            f"Speed: {speed}x",
+            f"Default Silence Duration: {silence_duration}s",
+            f"Output: {os.path.basename(output_path)}",
+            "",
+            "=== Individual Speaker Pause Settings ===",
+        ]
+
+        # 添加每个说话人的停顿时间设置
+        for i in range(num_speakers):
+            pause_time = speaker_pauses[i] if i < len(speaker_pauses) else silence_duration
+            info_lines.append(f"Speaker{i+1} Pause: {pause_time:.2f}s")
+
+        info_lines.extend([
+            "",
+            "=== Speaker Emotion Settings ===",
+        ])
+
+        # 添加每个说话人的情感设置
+        for i, emotion_config in enumerate(emotion_configs):
+            if i < num_speakers:
+                mode = emotion_config.get("mode", "none")
+                pause_time = speaker_pauses[i] if i < len(speaker_pauses) else silence_duration
+                info_lines.append(f"Speaker{i+1}: {mode} (Pause: {pause_time:.2f}s)")
+
+                if mode == "emotion_vector":
+                    vector = emotion_config.get("vector", [])
+                    emotion_names = ["Happy", "Angry", "Sad", "Fear", "Hate", "Low", "Surprise", "Neutral"]
+                    active_emotions = [f"{name}: {val:.2f}" for name, val in zip(emotion_names, vector) if val > 0.1]
+                    if active_emotions:
+                        info_lines.append(f"  Emotions: {', '.join(active_emotions)}")
+                elif mode == "audio_prompt":
+                    audio_info = emotion_config.get("audio", None)
+                    alpha = emotion_config.get("alpha", 1.0)
+                    if audio_info and isinstance(audio_info, dict):
+                        duration = audio_info.get("duration", 0)
+                        info_lines.append(f"  Audio: {duration:.2f}s (α={alpha})")
+                elif mode == "text_description":
+                    text = emotion_config.get("text", "")
+                    if text:
+                        info_lines.append(f"  Description: {text[:50]}...")
+
+        info_lines.extend([
+            "",
+            "=== Conversation Preview ===",
+        ])
+
+        # 添加对话预览（最多显示前5行）
+        for i, line in enumerate(conversation_lines[:5]):
+            preview_text = line["text"][:60] + "..." if len(line["text"]) > 60 else line["text"]
+            speaker_idx = line["speaker_idx"]
+
+            # 优先显示文本中的自定义停顿时间
+            custom_pause = line.get("custom_pause")
+            if custom_pause is not None:
+                pause_time = custom_pause
+                pause_source = "文本"
+            else:
+                pause_time = speaker_pauses[speaker_idx] if speaker_idx < len(speaker_pauses) else silence_duration
+                pause_source = "设置"
+
+            info_lines.append(f"{line['speaker_name']}: {preview_text} [Pause: {pause_time:.2f}s ({pause_source})]")
 
         if len(conversation_lines) > 5:
             info_lines.append(f"... and {len(conversation_lines) - 5} more lines")
