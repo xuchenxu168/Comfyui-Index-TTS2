@@ -1371,7 +1371,7 @@ If you find IndexTTS2 helpful and it has made your voice synthesis projects easi
 
 **☕ Support Development**
 
-<img src="https://https://github.com/xuchenxu168/images/blob/main/%E6%94%B6%E6%AC%BE%E7%A0%81.jpg" width="200" height="200">
+<img src="https://github.com/xuchenxu168/images/blob/main/%E6%94%B6%E6%AC%BE%E7%A0%81.jpg" width="200" height="200">
 
 *Scan to buy me a coffee*
 *扫码请我喝咖啡*
