@@ -1359,12 +1359,12 @@ If you find IndexTTS2 helpful and it has made your voice synthesis projects easi
 
 **💬 WeChat Contact**
 
-<img src="https://via.placeholder.com/200x200/2E8B57/FFFFFF?text=WeChat+QR+Code" alt="WeChat QR Code" width="200" height="200">
+<img src="https://github.com/xuchenxu168/images/blob/main/%E5%BE%AE%E4%BF%A1%E5%8F%B7.jpg" alt="WeChat QR Code" width="200" height="200">
 
 *Scan to add WeChat*
 *扫码添加微信*
 
-**WeChat ID**: `请替换为您的微信号`
+**WeChat ID**: `Kenchen7168`
 
 </td>
 <td width="50%" align="center">
